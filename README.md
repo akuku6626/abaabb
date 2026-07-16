@@ -113,5 +113,5 @@ const ENV_ID = '您的环境ID';
 🤝 贡献与反馈
 欢迎提交 Issue 或 Pull Request 改进项目。如有问题，可在聊天中联系客服（演示客服页面 message.html 为静态模拟）。
 
-项目地址：https://github.com/your-repo/campus-trading-platform
+项目地址：https://github.com/akuku6626/abaabb
 演示地址：https://campus-trading-d9g84nflw71c77ac3-1451642129.ap-shanghai.app.tcloudbase.com/
