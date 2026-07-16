@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>物品广场 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:"Microsoft Yahei",sans-serif; }
+        body { max-width:960px; margin:20px auto; padding:0 20px; }
+        .title-box { border:2px solid #333; padding:16px; text-align:center; font-size:28px; border-radius:8px; margin-bottom:20px; background:#f8f9fa; }
+        .top-nav { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:20px; }
+        .top-nav button { padding:8px 18px; font-size:15px; border:1px solid #333; background:#fff; cursor:pointer; border-radius:6px; transition:all 0.2s; }
+        .top-nav button:hover { background:#f0f0f0; }
+        .top-nav select { padding:8px 14px; font-size:15px; border:1px solid #333; border-radius:6px; flex:1; min-width:120px; }
+        .search-input-wrap { display:flex; gap:0; flex:2; min-width:200px; }
+        .search-input-wrap input { flex:1; padding:8px 14px; font-size:15px; border:1px solid #333; border-right:none; border-radius:6px 0 0 6px; outline:none; }
+        .search-input-wrap input:focus { border-color:#407bff; }
+        .search-input-wrap button { border-radius:0 6px 6px 0; border-left:none; }
+        .price-filter {
+            display:flex; flex-wrap:wrap; align-items:center; gap:12px; background:#f8f9fa; border-radius:8px; padding:10px 16px; margin-bottom:16px; border:1px solid #e0e0e0; width:100%;
+        }
+        .price-filter label { font-weight:500; font-size:14px; color:#555; }
+        .price-filter .price-inputs { display:flex; align-items:center; gap:8px; }
+        .price-filter .price-inputs input[type="number"] { width:100px; padding:4px 8px; border:1px solid #ccc; border-radius:4px; font-size:14px; outline:none; }
+        .price-filter .price-inputs input[type="number"]:focus { border-color:#407bff; }
+        .price-filter .price-sliders { display:flex; align-items:center; gap:10px; flex:1; min-width:200px; }
+        .price-filter .price-sliders input[type="range"] { flex:1; height:4px; -webkit-appearance:none; background:#ddd; border-radius:2px; outline:none; }
+        .price-filter .price-sliders input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; background:#407bff; border-radius:50%; cursor:pointer; }
+        .price-filter .price-sliders input[type="range"]::-moz-range-thumb { width:16px; height:16px; background:#407bff; border-radius:50%; cursor:pointer; }
+        .price-filter .range-text { font-size:14px; color:#333; white-space:nowrap; min-width:60px; }
+        .stats-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:0 4px; color:#888; font-size:14px; }
+        .item-card { border:1px solid #ddd; border-radius:10px; padding:16px; margin:12px 0; display:flex; gap:16px; align-items:center; justify-content:space-between; transition:all 0.2s; }
+        .item-card:hover { box-shadow:0 2px 16px rgba(0,0,0,0.08); border-color:#bbb; }
+        .img-empty { width:80px; height:80px; border:1px solid #ddd; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:36px; background:#fafbfc; overflow:hidden; }
+        .img-empty img { width:100%; height:100%; object-fit:cover; }
+        .item-info { flex:1; min-width:120px; }
+        .item-info .name { font-size:20px; font-weight:bold; }
+        .item-info .type-tag { font-size:12px; padding:2px 10px; border-radius:12px; margin-left:8px; }
+        .type-tag.wanted { background:#e3f2fd; color:#1565c0; }
+        .type-tag.sale { background:#e8f5e9; color:#2e7d32; }
+        .item-info .meta { font-size:14px; color:#666; margin-top:4px; display:flex; flex-wrap:wrap; gap:12px; }
+        .item-info .meta span { background:#f5f5f5; padding:1px 10px; border-radius:12px; }
+        .item-actions { display:flex; gap:8px; flex-wrap:wrap; flex-shrink:0; }
+        .item-actions button { padding:6px 14px; font-size:14px; border:1px solid #ddd; background:#fff; cursor:pointer; border-radius:6px; transition:all 0.2s; white-space:nowrap; }
+        .item-actions button:hover { background:#f0f0f0; }
+        .item-actions .btn-detail { border-color:#407bff; color:#407bff; }
+        .item-actions .btn-detail:hover { background:#e3f2fd; }
+        .item-actions .btn-chat { border-color:#388e3c; color:#388e3c; }
+        .item-actions .btn-chat:hover { background:#e8f5e9; }
+        .item-actions .btn-chat:disabled { opacity:0.5; cursor:not-allowed; }
+        .empty-tip { text-align:center; padding:60px 20px; color:#999; font-size:18px; }
+        .empty-tip .big-icon { font-size:56px; display:block; margin-bottom:12px; }
+        .toast { position:fixed; top:30px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 28px; border-radius:10px; font-size:16px; z-index:1000; opacity:0; transition:opacity 0.4s; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
+        .toast.show { opacity:1; }
+        .loading-spinner { text-align:center; padding:40px; color:#999; }
+        @media (max-width:600px) {
+            .top-nav { flex-direction:column; align-items:stretch; }
+            .search-input-wrap { flex:1; }
+            .item-card { flex-wrap:wrap; }
+            .item-actions { width:100%; justify-content:flex-end; }
+            .price-filter .price-sliders { flex-wrap:wrap; }
+            .price-filter .price-inputs input[type="number"] { width:80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="container">
+        <div class="title-box">🏫 校园物品广场</div>
+
+        <div class="top-nav">
+            <button id="backHome">🏠 返回主页</button>
+            <div class="search-input-wrap">
+                <input type="text" id="searchInput" placeholder="🔍 搜索物品...">
+                <button id="searchBtn">搜索</button>
+            </div>
+            <select id="typeSelect">
+                <option value="all">📂 全部类型</option>
+                <option value="wanted">📢 求购</option>
+                <option value="sale">🛒 出售</option>
+            </select>
+            <select id="categorySelect">
+                <option value="all">📂 全部分类</option>
+                <option value="book">📚 教材书籍</option>
+                <option value="digital">💻 数码电子</option>
+                <option value="daily">🧴 日用百货</option>
+                <option value="sports">⚽ 运动器材</option>
+                <option value="other">🎯 其他</option>
+            </select>
+            <button id="publishWantedBtn" style="background:#1565c0;color:#fff;border-color:#1565c0;">📢 求购</button>
+            <button id="publishSaleBtn" style="background:#2e7d32;color:#fff;border-color:#2e7d32;">🛒 出售</button>
+            <button onclick="location.href='myManage.html'">📋 我的管理</button>
+        </div>
+
+        <div class="price-filter" id="priceFilter">
+            <label>💰 价格区间</label>
+            <div class="price-inputs">
+                <input type="number" id="priceMin" placeholder="最低价" min="0" step="1">
+                <span>至</span>
+                <input type="number" id="priceMax" placeholder="最高价" min="0" step="1">
+            </div>
+            <div class="price-sliders">
+                <input type="range" id="priceMinSlider" min="0" max="1000" value="0" step="1">
+                <input type="range" id="priceMaxSlider" min="0" max="1000" value="1000" step="1">
+                <span class="range-text" id="rangeText">0 - 1000</span>
+            </div>
+            <button class="btn btn-sm" id="clearPriceBtn" style="background:#eee;border:1px solid #ccc;padding:4px 12px;border-radius:4px;cursor:pointer;">清除</button>
+        </div>
+
+        <div class="stats-bar">
+            <span id="statsText">共 0 条</span>
+            <span id="filterStatus">显示全部</span>
+        </div>
+
+        <div id="itemsContainer">
+            <div class="loading-spinner">⏳ 加载中...</div>
+        </div>
+    </div>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID });
+        const db = app.database();
+        const _ = db.command;
+        const auth = app.auth();
+
+        let allItems = [];
+        let filteredItems = [];
+        let myUserId = '';
+        let myName = '';
+        let currentType = 'all';
+        let currentCategory = 'all';
+        let currentKeyword = '';
+        let priceMin = 0;
+        let priceMax = Infinity;
+        let globalPriceMin = 0;
+        let globalPriceMax = 100;
+
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+
+        function showToast(msg, duration = 2500) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        function extractPrice(item) {
+            const raw = item.type === 'sale' ? item.price : item.budget;
+            if (!raw) return NaN;
+            const num = parseFloat(raw);
+            if (!isNaN(num)) return num;
+            const match = raw.match(/(\d+(\.\d+)?)/);
+            if (match) return parseFloat(match[1]);
+            return NaN;
+        }
+
+        function updatePriceRange() {
+            const validPrices = allItems.map(item => extractPrice(item)).filter(v => !isNaN(v) && v >= 0);
+            if (validPrices.length === 0) {
+                globalPriceMin = 0;
+                globalPriceMax = 100;
+                document.getElementById('priceMinSlider').disabled = true;
+                document.getElementById('priceMaxSlider').disabled = true;
+                document.getElementById('priceMin').disabled = true;
+                document.getElementById('priceMax').disabled = true;
+                document.getElementById('rangeText').textContent = '无价格数据';
+                return;
+            }
+            globalPriceMin = Math.floor(Math.min(...validPrices) * 0.9);
+            globalPriceMax = Math.ceil(Math.max(...validPrices) * 1.1);
+            if (globalPriceMin === globalPriceMax) {
+                globalPriceMin = 0;
+                globalPriceMax = globalPriceMin + 10;
+            }
+            document.getElementById('priceMinSlider').disabled = false;
+            document.getElementById('priceMaxSlider').disabled = false;
+            document.getElementById('priceMin').disabled = false;
+            document.getElementById('priceMax').disabled = false;
+            document.getElementById('priceMinSlider').min = globalPriceMin;
+            document.getElementById('priceMinSlider').max = globalPriceMax;
+            document.getElementById('priceMaxSlider').min = globalPriceMin;
+            document.getElementById('priceMaxSlider').max = globalPriceMax;
+            let curMin = parseFloat(document.getElementById('priceMinSlider').value) || globalPriceMin;
+            let curMax = parseFloat(document.getElementById('priceMaxSlider').value) || globalPriceMax;
+            if (curMin < globalPriceMin) curMin = globalPriceMin;
+            if (curMax > globalPriceMax) curMax = globalPriceMax;
+            document.getElementById('priceMinSlider').value = curMin;
+            document.getElementById('priceMaxSlider').value = curMax;
+            document.getElementById('priceMin').value = curMin;
+            document.getElementById('priceMax').value = curMax;
+            updateRangeText(curMin, curMax);
+        }
+
+        function updateRangeText(min, max) {
+            document.getElementById('rangeText').textContent = `${Math.round(min)} - ${Math.round(max)}`;
+        }
+
+        function syncPriceControls(source) {
+            const minSlider = document.getElementById('priceMinSlider');
+            const maxSlider = document.getElementById('priceMaxSlider');
+            const minInput = document.getElementById('priceMin');
+            const maxInput = document.getElementById('priceMax');
+
+            let minVal, maxVal;
+            if (source === 'minSlider') {
+                minVal = parseFloat(minSlider.value);
+                maxVal = parseFloat(maxSlider.value);
+                if (minVal > maxVal) {
+                    minSlider.value = maxVal;
+                    minVal = maxVal;
+                }
+                minInput.value = minVal;
+            } else if (source === 'maxSlider') {
+                minVal = parseFloat(minSlider.value);
+                maxVal = parseFloat(maxSlider.value);
+                if (maxVal < minVal) {
+                    maxSlider.value = minVal;
+                    maxVal = minVal;
+                }
+                maxInput.value = maxVal;
+            } else if (source === 'minInput') {
+                let val = parseFloat(minInput.value);
+                if (isNaN(val) || val < globalPriceMin) val = globalPriceMin;
+                if (val > globalPriceMax) val = globalPriceMax;
+                minVal = val;
+                maxVal = parseFloat(maxInput.value) || globalPriceMax;
+                if (minVal > maxVal) {
+                    maxVal = minVal;
+                    maxInput.value = maxVal;
+                    maxSlider.value = maxVal;
+                }
+                minSlider.value = minVal;
+            } else if (source === 'maxInput') {
+                let val = parseFloat(maxInput.value);
+                if (isNaN(val) || val > globalPriceMax) val = globalPriceMax;
+                if (val < globalPriceMin) val = globalPriceMin;
+                maxVal = val;
+                minVal = parseFloat(minInput.value) || globalPriceMin;
+                if (maxVal < minVal) {
+                    minVal = maxVal;
+                    minInput.value = minVal;
+                    minSlider.value = minVal;
+                }
+                maxSlider.value = maxVal;
+            }
+            priceMin = parseFloat(minInput.value) || globalPriceMin;
+            priceMax = parseFloat(maxInput.value) || globalPriceMax;
+            if (priceMin < globalPriceMin) priceMin = globalPriceMin;
+            if (priceMax > globalPriceMax) priceMax = globalPriceMax;
+            updateRangeText(priceMin, priceMax);
+            applyFilters();
+        }
+
+        function bindPriceEvents() {
+            const minSlider = document.getElementById('priceMinSlider');
+            const maxSlider = document.getElementById('priceMaxSlider');
+            const minInput = document.getElementById('priceMin');
+            const maxInput = document.getElementById('priceMax');
+
+            minSlider.addEventListener('input', function() {
+                syncPriceControls('minSlider');
+            });
+            maxSlider.addEventListener('input', function() {
+                syncPriceControls('maxSlider');
+            });
+            minInput.addEventListener('input', function() {
+                syncPriceControls('minInput');
+            });
+            maxInput.addEventListener('input', function() {
+                syncPriceControls('maxInput');
+            });
+            document.getElementById('clearPriceBtn').addEventListener('click', function() {
+                minInput.value = '';
+                maxInput.value = '';
+                const minVal = globalPriceMin;
+                const maxVal = globalPriceMax;
+                minSlider.value = minVal;
+                maxSlider.value = maxVal;
+                priceMin = minVal;
+                priceMax = maxVal;
+                updateRangeText(minVal, maxVal);
+                applyFilters();
+            });
+        }
+
+        async function getImageUrl(fileID) {
+            if (!fileID) return '📦';
+            if (!fileID.startsWith('cloud://')) return fileID;
+            try {
+                const result = await app.getTempFileURL({ fileList: [fileID] });
+                return result.fileList[0].tempFileURL;
+            } catch (e) {
+                console.error('获取图片链接失败:', e);
+                return '📦';
+            }
+        }
+
+        async function renderItems(list) {
+            const container = document.getElementById('itemsContainer');
+            const stats = document.getElementById('statsText');
+            const filterStatus = document.getElementById('filterStatus');
+
+            stats.textContent = `共 ${list.length} 条`;
+
+            if (!list || list.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-tip">
+                        <span class="big-icon">📭</span>
+                        当前暂无物品<br>
+                        <span style="font-size:14px;color:#bbb;">调整筛选条件或发布一条吧！</span>
+                    </div>
+                `;
+                filterStatus.textContent = '暂无数据';
+                return;
+            }
+
+            let html = '';
+            for (let item of list) {
+                const isOwn = item.user === myUserId;
+                const isFinished = item.isFinish === true;
+                const displayName = item.userDisplay || '匿名用户';
+                const categoryMap = { 'book':'📚', 'digital':'💻', 'daily':'🧴', 'sports':'⚽', 'other':'🎯' };
+                const catIcon = categoryMap[item.category] || '📦';
+                const typeLabel = item.type === 'sale' ? '出售' : '求购';
+                const typeClass = item.type === 'sale' ? 'sale' : 'wanted';
+                const priceLabel = item.type === 'sale' ? `💰 ${item.price || '面议'}` : `💰 ${item.budget || '面议'}`;
+
+                let imgHtml = '📦';
+                if (item.img && item.img !== '📦') {
+                    if (item.img.startsWith('cloud://')) {
+                        const url = await getImageUrl(item.img);
+                        imgHtml = `<img src="${url}" alt="图片">`;
+                    } else {
+                        imgHtml = `<img src="${item.img}" alt="图片">`;
+                    }
+                }
+
+                html += `
+                    <div class="item-card" data-id="${item._id}">
+                        <div class="img-empty">${imgHtml}</div>
+                        <div class="item-info">
+                            <div class="name">
+                                ${escapeHtml(item.name || '未命名')}
+                                <span class="type-tag ${typeClass}">${typeLabel}</span>
+                                ${isFinished ? '<span class="finish-tag" style="font-size:12px;background:#e8f5e9;color:#388e3c;padding:1px 10px;border-radius:12px;margin-left:8px;">✅ 已完成</span>' : ''}
+                            </div>
+                            <div class="meta">
+                                <span>${priceLabel}</span>
+                                <span>${catIcon} ${item.category || '其他'}</span>
+                                <span>👤 ${escapeHtml(displayName)}</span>
+                                ${isOwn ? '<span style="color:#407bff;">👑 我的</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-detail look-detail" data-id="${item._id}" data-type="${item.type || 'wanted'}">📋 详情</button>
+                            ${!isOwn && !isFinished && item.user ? `<button class="btn-chat chat-btn" data-id="${item._id}" data-user="${item.user}" data-name="${escapeHtml(displayName)}">💬 私聊</button>` : ''}
+                            ${isOwn ? `<button class="btn-chat" disabled style="opacity:0.5;cursor:not-allowed;">👤 自己的</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+
+            document.querySelectorAll('.look-detail').forEach(btn => {
+                btn.onclick = function() {
+                    const id = this.getAttribute('data-id');
+                    const type = this.getAttribute('data-type') || 'wanted';
+                    location.href = "detail.html?id=" + id + "&type=" + type;
+                };
+            });
+
+            document.querySelectorAll('.chat-btn').forEach(btn => {
+                btn.onclick = async function() {
+                    const targetId = this.getAttribute('data-user');
+                    const targetName = this.getAttribute('data-name') || '用户';
+                    if (!targetId) { showToast('⚠️ 无法获取对方信息'); return; }
+                    if (targetId === myUserId) { showToast('😄 这是你自己的物品哦'); return; }
+                    try {
+                        const originalText = this.textContent;
+                        this.textContent = '⏳ 处理中...';
+                        this.disabled = true;
+                        const conversationId = await getOrCreateConversation(targetId, targetName);
+                        location.href = `chatRoom.html?cid=${conversationId}&name=${encodeURIComponent(targetName)}&targetId=${targetId}`;
+                    } catch (e) {
+                        console.error('私聊失败', e);
+                        showToast('❌ ' + (e.message || '操作失败，请重试'));
+                        this.textContent = '💬 私聊';
+                        this.disabled = false;
+                    }
+                };
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function getOrCreateConversation(targetId, targetName) {
+            if (!targetId) throw new Error('对方ID无效');
+            if (targetId === myUserId) throw new Error('不能和自己聊天');
+            const { data } = await db.collection('conversations')
+                .where(_.or([
+                    { userIdA: myUserId, userIdB: targetId },
+                    { userIdA: targetId, userIdB: myUserId }
+                ]))
+                .get();
+            if (data && data.length > 0) {
+                return data[0]._id;
+            }
+            const result = await db.collection('conversations').add({
+                userIdA: myUserId,
+                userIdB: targetId,
+                nameA: myName,
+                nameB: targetName || '用户',
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+            return result.id;
+        }
+
+        async function applyFilters() {
+            let list = [...allItems];
+            if (currentType !== 'all') {
+                list = list.filter(item => item.type === currentType);
+            }
+            if (currentCategory !== 'all') {
+                list = list.filter(item => item.category === currentCategory);
+            }
+            if (currentKeyword.trim()) {
+                const kw = currentKeyword.trim().toLowerCase();
+                list = list.filter(item => 
+                    (item.name && item.name.toLowerCase().includes(kw)) ||
+                    (item.description && item.description.toLowerCase().includes(kw))
+                );
+            }
+            const min = priceMin;
+            const max = priceMax;
+            list = list.filter(item => {
+                const price = extractPrice(item);
+                if (isNaN(price)) return true;
+                return price >= min && price <= max;
+            });
+
+            list.sort((a, b) => {
+                if (a.isFinish && !b.isFinish) return 1;
+                if (!a.isFinish && b.isFinish) return -1;
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+            filteredItems = list;
+            await renderItems(list);
+            let statusText = '显示全部';
+            if (currentType !== 'all') statusText = '类型：' + document.getElementById('typeSelect').options[document.getElementById('typeSelect').selectedIndex].text;
+            if (currentCategory !== 'all') statusText += ' | 分类：' + document.getElementById('categorySelect').options[document.getElementById('categorySelect').selectedIndex].text;
+            if (currentKeyword) statusText = '搜索：' + currentKeyword;
+            if (min > globalPriceMin || max < globalPriceMax) statusText += ` | 价格：${min} - ${max}`;
+            document.getElementById('filterStatus').textContent = statusText;
+        }
+
+        async function loadItems() {
+            try {
+                const [wantedRes, saleRes] = await Promise.all([
+                    db.collection('wanted').where({ status: 'approved' }).orderBy('createdAt', 'desc').get(),
+                    db.collection('sales').where({ status: 'approved' }).orderBy('createdAt', 'desc').get()
+                ]);
+                const wanteds = (wantedRes.data || []).map(item => ({ ...item, type: 'wanted' }));
+                const sales = (saleRes.data || []).map(item => ({ ...item, type: 'sale' }));
+                allItems = [...wanteds, ...sales];
+                updatePriceRange();
+                const minSlider = document.getElementById('priceMinSlider');
+                const maxSlider = document.getElementById('priceMaxSlider');
+                if (minSlider.value === '0' && maxSlider.value === '1000') {
+                    minSlider.value = globalPriceMin;
+                    maxSlider.value = globalPriceMax;
+                    document.getElementById('priceMin').value = globalPriceMin;
+                    document.getElementById('priceMax').value = globalPriceMax;
+                    priceMin = globalPriceMin;
+                    priceMax = globalPriceMax;
+                    updateRangeText(globalPriceMin, globalPriceMax);
+                }
+                await applyFilters();
+            } catch (e) {
+                console.error('加载失败', e);
+                allItems = [];
+                renderItems([]);
+                showToast('⚠️ 加载失败，请刷新重试');
+            }
+        }
+
+        async function initAuth() {
+            const registeredUserId = localStorage.getItem('currentUserId');
+            if (!registeredUserId) {
+                alert('👋 请先登录');
+                location.href = 'login.html';
+                return;
+            }
+            myUserId = registeredUserId;
+            myName = localStorage.getItem('userNick') || '用户_' + myUserId.substring(0, 6);
+
+            const params = new URLSearchParams(window.location.search);
+            const searchParam = params.get('search');
+            if (searchParam) {
+                document.getElementById('searchInput').value = searchParam;
+                currentKeyword = searchParam;
+            }
+
+            loadItems();
+            bindPriceEvents();
+        }
+
+        document.getElementById('typeSelect').onchange = function() {
+            currentType = this.value;
+            applyFilters();
+        };
+
+        document.getElementById('categorySelect').onchange = function() {
+            currentCategory = this.value;
+            applyFilters();
+        };
+
+        document.getElementById('searchBtn').onclick = function() {
+            currentKeyword = document.getElementById('searchInput').value.trim();
+            applyFilters();
+        };
+
+        document.getElementById('searchInput').onkeydown = function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('searchBtn').click();
+            }
+        };
+
+        document.getElementById('backHome').onclick = () => location.href = "index.html";
+        document.getElementById('publishWantedBtn').onclick = () => location.href = "PublishBuy.html";
+        document.getElementById('publishSaleBtn').onclick = () => location.href = "PublishSale.html";
+
+        initAuth();
+    </script>
+</body>
+</html>

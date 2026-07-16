@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>发布出售 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", sans-serif; }
+        body { max-width: 820px; margin: 20px auto; padding: 0 20px; background: #f5f7fb; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            background: #fff;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .header h1 {
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 .edit-badge {
+            display: inline-block;
+            background: #fff3e0;
+            color: #e65100;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 12px;
+        }
+        .header button {
+            padding: 8px 20px;
+            font-size: 16px;
+            border: 1px solid #333;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .header button:hover { background: #f0f0f0; }
+
+        .form-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 6px;
+            color: #1a2634;
+        }
+        .form-group label .required {
+            color: #d32f2f;
+            margin-left: 2px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            transition: border-color 0.3s;
+            background: #fafcff;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #407bff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(64, 123, 255, 0.12);
+        }
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 600px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+
+        /* ===== 图片上传区域 ===== */
+        .image-upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .image-upload-area:hover {
+            border-color: #407bff;
+            background: #f0f4ff;
+        }
+        .image-upload-area .preview-img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 6px;
+            margin-top: 8px;
+            object-fit: cover;
+        }
+        .image-upload-area .upload-hint {
+            color: #999;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        .image-upload-area .file-name {
+            color: #407bff;
+            font-size: 14px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .image-upload-area .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 16px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .image-upload-area .remove-btn:hover {
+            background: #d32f2f;
+        }
+        #imageInput {
+            display: none;
+        }
+        .upload-progress {
+            width: 100%;
+            max-width: 300px;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        .upload-progress .bar {
+            height: 100%;
+            background: #407bff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* ===== 提交按钮 ===== */
+        .submit-area {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+        .submit-area button {
+            padding: 12px 40px;
+            font-size: 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-submit {
+            background: #407bff;
+            color: #fff;
+            flex: 1;
+        }
+        .btn-submit:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(64,123,255,0.3);
+        }
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-cancel {
+            background: #f5f5f5;
+            color: #333;
+            border: 1px solid #ccc !important;
+        }
+        .btn-cancel:hover {
+            background: #eee;
+        }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-size: 16px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast.success { background: #22a67e; }
+        .toast.error { background: #e74c5e; }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="header">
+        <h1>
+            📤 发布出售
+            <span class="edit-badge" id="editBadge" style="display:none;">编辑模式</span>
+        </h1>
+        <button onclick="location.href='buy.html'">← 返回广场</button>
+    </div>
+
+    <div class="form-container">
+        <form id="publishForm" onsubmit="return false;">
+            <!-- 物品名称 -->
+            <div class="form-group">
+                <label><span class="required">*</span> 物品名称</label>
+                <input type="text" id="g_name" placeholder="请输入你想出售的物品名称" required>
+            </div>
+
+            <!-- 分类 + 价格 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label><span class="required">*</span> 分类</label>
+                    <select id="g_category">
+                        <option value="book">📚 教材书籍</option>
+                        <option value="digital">💻 数码电子</option>
+                        <option value="daily">🧴 日用百货</option>
+                        <option value="sports">⚽ 运动器材</option>
+                        <option value="other">🎯 其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>价格</label>
+                    <input type="text" id="g_price" placeholder="例如：50元 / 面议">
+                </div>
+            </div>
+
+            <!-- 成色 + 交易方式 -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>成色</label>
+                    <select id="g_quality">
+                        <option value="不限">不限</option>
+                        <option value="全新">全新</option>
+                        <option value="九成新">九成新</option>
+                        <option value="八成新">八成新</option>
+                        <option value="七成新及以下">七成新及以下</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>交易方式</label>
+                    <select id="g_trade">
+                        <option value="面交">面交</option>
+                        <option value="邮寄">邮寄</option>
+                        <option value="均可">均可</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 物品描述 -->
+            <div class="form-group">
+                <label>物品描述</label>
+                <textarea id="g_desc" placeholder="详细描述物品的状况，如使用时间、有无划痕、配件等"></textarea>
+            </div>
+
+            <!-- ===== 图片上传 ===== -->
+            <div class="form-group">
+                <label>物品图片</label>
+                <div class="image-upload-area" id="uploadArea">
+                    <div id="uploadPlaceholder">
+                        <span style="font-size: 48px;">📷</span>
+                        <div class="upload-hint">点击上传图片（支持 JPG/PNG，建议 2MB 以内）</div>
+                    </div>
+                    <img id="previewImg" class="preview-img" style="display:none;" alt="预览">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="upload-progress" id="uploadProgress">
+                        <div class="bar" id="progressBar"></div>
+                    </div>
+                    <button class="remove-btn" id="removeImgBtn" type="button">✕</button>
+                </div>
+                <input type="file" id="imageInput" accept="image/*">
+                <div style="font-size:13px;color:#999;margin-top:4px;">💡 上传后会自动保存到云端，建议使用清晰图片</div>
+            </div>
+
+            <!-- 发布人（自动填充，只读） -->
+            <div class="form-group">
+                <label>发布人</label>
+                <input type="text" id="g_user" readonly style="background:#f5f5f5;color:#666;">
+            </div>
+
+            <!-- 提交 -->
+            <div class="submit-area">
+                <button type="button" class="btn-submit" id="goPublish">🚀 发布出售</button>
+                <button type="button" class="btn-cancel" onclick="location.href='buy.html'">取消</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID });
+        const db = app.database();
+        const auth = app.auth();
+
+        // ===== Toast =====
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+        function showToast(msg, duration = 2500, type = '') {
+            toast.textContent = msg;
+            toast.className = 'toast' + (type ? ' ' + type : '');
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        // ===== DOM 引用 =====
+        const imageInput = document.getElementById('imageInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const previewImg = document.getElementById('previewImg');
+        const fileName = document.getElementById('fileName');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const removeImgBtn = document.getElementById('removeImgBtn');
+
+        let uploadedFileID = null;
+        let isUploading = false;
+
+        // ===== 点击上传区域触发文件选择 =====
+        uploadArea.addEventListener('click', function(e) {
+            if (e.target === removeImgBtn) return;
+            if (isUploading) return;
+            imageInput.click();
+        });
+
+        // ===== 移除图片 =====
+        removeImgBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            uploadedFileID = null;
+            previewImg.style.display = 'none';
+            uploadPlaceholder.style.display = 'block';
+            fileName.textContent = '';
+            removeImgBtn.style.display = 'none';
+            imageInput.value = '';
+            showToast('已移除图片', 1500);
+        });
+
+        // ===== 选择文件后处理 =====
+        imageInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                showToast('请选择图片文件！', 2000, 'error');
+                imageInput.value = '';
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('图片大小不能超过 5MB！', 2000, 'error');
+                imageInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                previewImg.src = ev.target.result;
+                previewImg.style.display = 'block';
+                uploadPlaceholder.style.display = 'none';
+                fileName.textContent = file.name;
+                removeImgBtn.style.display = 'flex';
+            };
+            reader.readAsDataURL(file);
+
+            await uploadImage(file);
+        });
+
+        // ===== 上传图片到云存储 =====
+        async function uploadImage(file) {
+            if (isUploading) return;
+            isUploading = true;
+
+            uploadProgress.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            const userId = localStorage.getItem('currentUserId') || 'anonymous';
+            const timestamp = Date.now();
+            const ext = file.name.split('.').pop();
+            const cloudPath = `images/sale/${userId}/${timestamp}.${ext}`;
+
+            try {
+                const result = await app.uploadFile({
+                    cloudPath: cloudPath,
+                    filePath: file,
+                    onProgress: function(progressEvent) {
+                        const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                        progressBar.style.width = percent + '%';
+                    }
+                });
+
+                uploadedFileID = result.fileID;
+                console.log('图片上传成功，fileID:', uploadedFileID);
+                fileName.textContent = file.name + ' ✅ 已上传';
+                removeImgBtn.style.display = 'flex';
+                showToast('✅ 图片上传成功！', 1500, 'success');
+
+                setTimeout(() => {
+                    uploadProgress.style.display = 'none';
+                }, 500);
+
+            } catch (e) {
+                console.error('上传失败:', e);
+                showToast('❌ 图片上传失败，请重试：' + e.message, 3000, 'error');
+                previewImg.style.display = 'none';
+                uploadPlaceholder.style.display = 'block';
+                fileName.textContent = '';
+                removeImgBtn.style.display = 'none';
+                uploadProgress.style.display = 'none';
+                uploadedFileID = null;
+            } finally {
+                isUploading = false;
+                imageInput.value = '';
+            }
+        }
+
+        // ============================================================
+        // 以下为出售发布逻辑
+        // ============================================================
+
+        let myUserId = '';
+        let displayName = '';
+
+        async function initAuth() {
+            try {
+                const loginState = await auth.getLoginState();
+                let user;
+                if (loginState) {
+                    user = loginState.user;
+                } else {
+                    const res = await auth.signInAnonymously();
+                    user = res.user;
+                }
+                myUserId = user.uid;
+                displayName = localStorage.getItem('userNick') || '匿名用户';
+                document.getElementById('g_user').value = displayName + ' (ID: ' + myUserId.substring(0, 8) + '...)';
+                console.log('当前用户UID:', myUserId);
+            } catch (err) {
+                console.error('登录失败', err);
+                myUserId = localStorage.getItem('currentUserId') || 'anonymous_' + Date.now();
+                displayName = localStorage.getItem('userNick') || '匿名用户';
+                document.getElementById('g_user').value = displayName + ' (临时)';
+            }
+            if (!localStorage.getItem('currentUserId')) {
+                showToast('请先登录再发布', 2000, 'error');
+                setTimeout(() => location.href = 'login.html', 1500);
+                return;
+            }
+            checkEditMode();
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('id');
+
+        async function checkEditMode() {
+            if (!editId) {
+                document.getElementById('editBadge').style.display = 'none';
+                document.querySelector('.header h1').innerHTML = '📤 发布出售';
+                document.getElementById('goPublish').textContent = '🚀 发布出售';
+                return;
+            }
+            document.getElementById('editBadge').style.display = 'inline-block';
+            document.querySelector('.header h1').innerHTML = '✏️ 编辑出售 <span class="edit-badge">编辑模式</span>';
+            document.getElementById('goPublish').textContent = '💾 保存修改';
+            await loadEditData();
+        }
+
+        async function loadEditData() {
+            try {
+                const res = await db.collection('sales').doc(editId).get();
+                const data = res.data;
+                if (data) {
+                    document.getElementById('g_name').value = data.name || '';
+                    document.getElementById('g_price').value = data.price || '';
+                    document.getElementById('g_quality').value = data.quality || '不限';
+                    document.getElementById('g_desc').value = data.description || '';
+                    document.getElementById('g_trade').value = data.trade || '面交';
+                    document.getElementById('g_category').value = data.category || 'book';
+                    if (data.img && data.img.startsWith('cloud://')) {
+                        try {
+                            const urlRes = await app.getTempFileURL({ fileList: [data.img] });
+                            const imgUrl = urlRes.fileList[0].tempFileURL;
+                            previewImg.src = imgUrl;
+                            previewImg.style.display = 'block';
+                            uploadPlaceholder.style.display = 'none';
+                            fileName.textContent = '已有图片';
+                            removeImgBtn.style.display = 'flex';
+                            uploadedFileID = data.img;
+                        } catch (e) {
+                            console.warn('加载图片失败', e);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('加载编辑数据失败', e);
+                showToast('加载数据失败，请稍后重试', 3000, 'error');
+            }
+        }
+
+        // ===== 发布/更新 =====
+        document.getElementById('goPublish').onclick = async function() {
+            const registeredUserId = localStorage.getItem('currentUserId');
+            if (!registeredUserId) {
+                showToast('👋 请先登录后再发布出售', 2000, 'error');
+                setTimeout(() => location.href = 'login.html', 1500);
+                return;
+            }
+
+            const name = document.getElementById('g_name').value.trim();
+            if (!name) {
+                showToast('⚠️ 请输入物品名称！', 2000, 'error');
+                document.getElementById('g_name').focus();
+                return;
+            }
+
+            let img = uploadedFileID || '📦';
+            const latestName = localStorage.getItem('userNick') || '匿名用户';
+
+            const data = {
+                name: name,
+                price: document.getElementById('g_price').value.trim() || '面议',
+                quality: document.getElementById('g_quality').value || '不限',
+                description: document.getElementById('g_desc').value.trim() || '无',
+                trade: document.getElementById('g_trade').value || '面交',
+                category: document.getElementById('g_category').value || 'book',
+                user: registeredUserId,
+                userDisplay: latestName,
+                img: img,
+                isFinish: false,
+                status: 'approved',
+                type: 'sale',
+                updatedAt: new Date().toISOString()
+            };
+
+            try {
+                if (editId) {
+                    const oldData = await db.collection('sales').doc(editId).get();
+                    data.createdAt = oldData.data?.createdAt || new Date().toISOString();
+                    await db.collection('sales').doc(editId).update(data);
+                    showToast('✅ 修改成功！', 1500, 'success');
+                } else {
+                    data.createdAt = new Date().toISOString();
+                    await db.collection('sales').add(data);
+                    showToast('🎉 发布成功！已自动上架', 1500, 'success');
+                }
+                setTimeout(() => location.href = 'myManage.html', 1200);
+            } catch (e) {
+                showToast('❌ 操作失败：' + e.message, 3000, 'error');
+                console.error(e);
+            }
+        };
+
+        initAuth();
+    </script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户信息 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:"Microsoft YaHei","PingFang SC",sans-serif; }
+        body { background:#f5f7fb; display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+        .container { max-width:420px; width:100%; background:#fff; border-radius:20px; box-shadow:0 8px 30px rgba(0,0,0,0.08); overflow:hidden; border:1px solid #e8ecf2; padding:28px 24px 24px; }
+
+        .top-bar { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+        .back-arrow { font-size:28px; cursor:pointer; user-select:none; color:#3d4a5c; transition:0.15s; padding:0 4px; }
+        .back-arrow:hover { color:#407bff; }
+        .top-bar .title { font-size:20px; font-weight:600; color:#1a2634; flex:1; }
+
+        .avatar-section { text-align:center; margin-bottom:20px; }
+        .avatar-wrap {
+            width:120px; height:120px; border-radius:50%; margin:0 auto;
+            border:4px solid #407bff; overflow:hidden;
+            background:#e8edf5; display:flex; align-items:center; justify-content:center;
+            position:relative;
+        }
+        .avatar-wrap img { width:100%; height:100%; object-fit:cover; }
+        .avatar-wrap .placeholder { font-size:56px; color:#999; }
+
+        .info-section { text-align:center; margin-bottom:24px; }
+        .info-section .nickname { font-size:24px; font-weight:700; color:#1a2634; }
+        .info-section .user-id {
+            font-size:14px; color:#8895aa; margin-top:4px;
+            background:#f5f7fb; display:inline-block; padding:2px 16px; border-radius:12px;
+        }
+        .info-section .signature {
+            font-size:15px; color:#666; margin-top:10px;
+            padding:10px 16px; background:#f8f9fa; border-radius:10px;
+            border:1px solid #eee; min-height:40px;
+        }
+        .info-section .signature .empty { color:#ccc; font-style:italic; }
+
+        .stats-row {
+            display:flex; justify-content:space-around; padding:16px 0;
+            border-top:1px solid #f0f2f6; border-bottom:1px solid #f0f2f6;
+            margin-bottom:20px;
+        }
+        .stats-row .stat-item { text-align:center; }
+        .stats-row .stat-item .num { font-size:22px; font-weight:700; color:#1a2634; }
+        .stats-row .stat-item .label { font-size:13px; color:#8895aa; }
+
+        .action-btn {
+            width:100%; padding:14px; font-size:18px; font-weight:600;
+            background:#407bff; color:#fff; border:none; border-radius:12px;
+            cursor:pointer; transition:all 0.3s;
+        }
+        .action-btn:hover { background:#2563eb; transform:scale(1.02); }
+        .action-btn:disabled { background:#ccc; cursor:not-allowed; transform:none; }
+
+        .loading { text-align:center; padding:40px; color:#8895aa; font-size:16px; }
+        .loading .spinner { display:inline-block; animation:spin 1s linear infinite; font-size:32px; }
+        @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+
+        .toast {
+            position:fixed; top:30px; left:50%; transform:translateX(-50%);
+            background:#333; color:#fff; padding:10px 24px; border-radius:10px;
+            font-size:15px; z-index:10000; opacity:0; transition:opacity 0.4s;
+            pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,0.2);
+        }
+        .toast.show { opacity:1; }
+
+        @media (max-width:480px) {
+            .container { padding:20px 16px; }
+            .avatar-wrap { width:96px; height:96px; }
+            .avatar-wrap .placeholder { font-size:44px; }
+            .info-section .nickname { font-size:20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="container" id="profileContainer">
+        <div class="top-bar">
+            <div class="back-arrow" id="backBtn">‹</div>
+            <span class="title" id="pageTitle">用户信息</span>
+        </div>
+
+        <div id="loadingState" class="loading">
+            <span class="spinner">⏳</span><br>
+            加载中...
+        </div>
+
+        <div id="contentArea" style="display:none;">
+            <div class="avatar-section">
+                <div class="avatar-wrap" id="avatarWrap">
+                    <img id="avatarImg" src="" alt="头像" style="display:none;">
+                    <span class="placeholder" id="avatarPlaceholder">👤</span>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="nickname" id="displayName">用户</div>
+                <div class="user-id" id="userIdDisplay">ID: ---</div>
+                <div class="signature" id="signatureBox">
+                    <span class="empty">这个人很懒，什么都没留下</span>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="num" id="statWanted">0</div>
+                    <div class="label">求购</div>
+                </div>
+                <div class="stat-item">
+                    <div class="num" id="statSales">0</div>
+                    <div class="label">出售</div>
+                </div>
+                <div class="stat-item">
+                    <div class="num" id="statComments">0</div>
+                    <div class="label">留言</div>
+                </div>
+            </div>
+
+            <button class="action-btn" id="chatBtn">💬 发消息</button>
+        </div>
+    </div>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID, region: 'ap-shanghai' });
+        const db = app.database();
+        const _ = db.command;
+        const auth = app.auth();
+
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+        function showToast(msg, duration = 2500) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        function getUrlParam(key) {
+            const url = new URL(location.href);
+            return url.searchParams.get(key);
+        }
+
+        async function getAvatarUrl(avatar) {
+            if (!avatar) return null;
+            if (avatar.startsWith('data:') || avatar.startsWith('http://') || avatar.startsWith('https://')) {
+                return avatar;
+            }
+            if (avatar.startsWith('cloud://')) {
+                try {
+                    const res = await app.getTempFileURL({ fileList: [avatar] });
+                    if (res.fileList && res.fileList.length > 0) {
+                        return res.fileList[0].tempFileURL || null;
+                    }
+                } catch (e) {
+                    console.error('获取头像临时链接失败', e);
+                }
+            }
+            return null;
+        }
+
+        async function init() {
+            const userCode = getUrlParam('userCode');
+            if (!userCode) {
+                document.getElementById('loadingState').innerHTML = '<div style="color:#e74c5e;">❌ 缺少用户编码参数</div>';
+                return;
+            }
+
+            const currentUserId = localStorage.getItem('currentUserId');
+
+            try {
+                // 用 userCode 查询用户
+                const res = await db.collection('user').where({ userCode: userCode }).get();
+                let user = null;
+                if (res.data && res.data.length > 0) {
+                    user = res.data[0];
+                } else {
+                    // 兼容旧数据：如果 userCode 不存在，尝试用 _id 查询（可能传的是 _id）
+                    const byId = await db.collection('user').doc(userCode).get();
+                    if (byId.data) {
+                        user = byId.data;
+                    }
+                }
+
+                if (!user) {
+                    document.getElementById('loadingState').innerHTML = '<div style="color:#e74c5e;">❌ 未找到该用户</div>';
+                    return;
+                }
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('contentArea').style.display = 'block';
+
+                const displayName = user.realName || user.username || '用户';
+                document.getElementById('pageTitle').textContent = displayName;
+                document.getElementById('displayName').textContent = displayName;
+
+                const shortId = user._id.length > 12 ? user._id.substring(0,8)+'...' : user._id;
+                document.getElementById('userIdDisplay').textContent = 'ID: ' + shortId;
+
+                const signature = user.signature || '';
+                const sigBox = document.getElementById('signatureBox');
+                if (signature) {
+                    sigBox.innerHTML = signature;
+                } else {
+                    sigBox.innerHTML = '<span class="empty">这个人很懒，什么都没留下</span>';
+                }
+
+                const avatarImg = document.getElementById('avatarImg');
+                const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+                if (user.avatar) {
+                    const avatarUrl = await getAvatarUrl(user.avatar);
+                    if (avatarUrl) {
+                        avatarImg.src = avatarUrl;
+                        avatarImg.style.display = 'block';
+                        avatarPlaceholder.style.display = 'none';
+                    } else {
+                        avatarImg.style.display = 'none';
+                        avatarPlaceholder.style.display = 'block';
+                    }
+                } else {
+                    avatarImg.style.display = 'none';
+                    avatarPlaceholder.style.display = 'block';
+                }
+
+                // 统计数据：用 userCode 关联（因为物品中 user 存的是 userCode）
+                const wantedRes = await db.collection('wanted')
+                    .where({ user: userCode })
+                    .count();
+                document.getElementById('statWanted').textContent = wantedRes.total || 0;
+
+                const saleRes = await db.collection('sales')
+                    .where({ user: userCode })
+                    .count();
+                document.getElementById('statSales').textContent = saleRes.total || 0;
+
+                // 留言数暂时用显示名统计（可优化，但不影响核心功能）
+                const commentRes = await db.collection('comment')
+                    .where({ user: displayName })
+                    .count();
+                document.getElementById('statComments').textContent = commentRes.total || 0;
+
+                // 发消息按钮
+                const chatBtn = document.getElementById('chatBtn');
+                if (!currentUserId) {
+                    chatBtn.textContent = '🔒 登录后发消息';
+                    chatBtn.disabled = true;
+                } else if (currentUserId === user._id) {
+                    chatBtn.textContent = '👤 这是你自己';
+                    chatBtn.disabled = true;
+                } else {
+                    chatBtn.disabled = false;
+                    chatBtn.onclick = async function() {
+                        this.textContent = '⏳ 处理中...';
+                        this.disabled = true;
+
+                        try {
+                            const convRes = await db.collection('conversations')
+                                .where(_.or([
+                                    { userIdA: currentUserId, userIdB: user._id },
+                                    { userIdA: user._id, userIdB: currentUserId }
+                                ]))
+                                .get();
+
+                            let conversationId;
+                            if (convRes.data && convRes.data.length > 0) {
+                                conversationId = convRes.data[0]._id;
+                            } else {
+                                const myName = localStorage.getItem('userNick') || '用户';
+                                const result = await db.collection('conversations').add({
+                                    userIdA: currentUserId,
+                                    userIdB: user._id,
+                                    nameA: myName,
+                                    nameB: displayName,
+                                    createdAt: new Date(),
+                                    updatedAt: new Date()
+                                });
+                                conversationId = result.id;
+                            }
+
+                            location.href = `chatRoom.html?cid=${conversationId}&name=${encodeURIComponent(displayName)}&targetId=${user._id}`;
+                        } catch (e) {
+                            console.error('创建会话失败', e);
+                            showToast('❌ ' + (e.message || '操作失败，请重试'), 3000);
+                            this.textContent = '💬 发消息';
+                            this.disabled = false;
+                        }
+                    };
+                }
+
+            } catch (e) {
+                console.error('加载用户信息失败', e);
+                document.getElementById('loadingState').innerHTML = '<div style="color:#e74c5e;">❌ 加载失败：' + e.message + '</div>';
+            }
+        }
+
+        document.getElementById('backBtn').onclick = function() {
+            const from = getUrlParam('from');
+            const itemId = getUrlParam('itemId');
+            const itemType = getUrlParam('itemType') || 'wanted';
+            if (from === 'admin') {
+                if (itemType === 'sale') {
+                    location.href = 'adminSale.html';
+                } else {
+                    location.href = 'adminWanted.html';
+                }
+            } else if (itemId) {
+                location.href = 'detail.html?id=' + itemId + '&type=' + itemType;
+            } else {
+                location.href = 'buy.html';
+            }
+        };
+
+        auth.signInAnonymously().catch(e => console.warn('匿名登录失败', e));
+        init();
+    </script>
+</body>
+</html>

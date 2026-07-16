@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>私聊窗口 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", sans-serif; }
+        body { max-width: 960px; margin: 20px auto; padding: 0 20px; height: 100vh; display: flex; flex-direction: column; }
+        .chat-header { display: flex; justify-content: space-between; align-items: center; font-size: 28px; padding-bottom: 12px; border-bottom: 2px solid #333; flex-shrink: 0; }
+        .chat-header .user-info { display: flex; align-items: center; gap: 12px; }
+        .chat-header .user-info .avatar { width: 44px; height: 44px; border: 2px solid #333; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; background: #f5f7fa; }
+        .back-list-btn { border: 2px solid #333; padding: 6px 18px; font-size: 18px; cursor: pointer; border-radius: 6px; background: #fff; transition: all 0.2s; }
+        .back-list-btn:hover { background: #f0f0f0; }
+        .chat-box { flex: 1; border: 2px solid #333; border-radius: 10px; padding: 20px; overflow-y: auto; margin: 15px 0; min-height: 400px; max-height: calc(100vh - 280px); background: #fafbfc; }
+        .msg-row { margin: 10px 0; display: flex; flex-direction: column; }
+        .msg-self { align-items: flex-end; }
+        .msg-other { align-items: flex-start; }
+        .msg-meta { font-size: 12px; color: #999; margin: 0 8px 4px; }
+        .msg-content { display: inline-block; padding: 10px 18px; border: 1px solid #ddd; border-radius: 16px; max-width: 75%; font-size: 17px; word-break: break-word; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .msg-self .msg-content { background: #407bff; color: #fff; border-color: #407bff; border-bottom-right-radius: 4px; }
+        .msg-other .msg-content { background: #fff; border-color: #ddd; border-bottom-left-radius: 4px; }
+        .msg-self .msg-meta { text-align: right; }
+        .msg-other .msg-meta { text-align: left; }
+        .msg-time-tag { text-align: center; color: #bbb; font-size: 12px; margin: 16px 0 8px; }
+        .input-area { display: flex; gap: 0; flex-shrink: 0; padding: 10px 0; border-top: 1px solid #eee; }
+        #payRequestBtn { border: 2px solid #333; border-right: none; border-radius: 8px 0 0 8px; background: #f5f7fa; font-size: 22px; padding: 0 18px; cursor: pointer; transition: 0.2s; }
+        #payRequestBtn:hover { background: #e8ecf1; }
+        #msgInput { flex: 1; font-size: 18px; padding: 12px 18px; border: 2px solid #333; border-left: none; border-right: none; outline: none; transition: border-color 0.2s; }
+        #msgInput:focus { border-color: #407bff; }
+        #sendBtn { font-size: 18px; padding: 12px 30px; border: 2px solid #333; border-left: none; background: #407bff; color: #fff; cursor: pointer; border-radius: 0 8px 8px 0; transition: all 0.2s; }
+        #sendBtn:hover { background: #2563eb; }
+        #sendBtn:active { transform: scale(0.97); }
+        .online-status { font-size: 14px; color: #4caf50; margin-left: 10px; }
+        .typing-indicator { font-size: 14px; color: #999; padding: 4px 12px; font-style: italic; display: none; }
+        .no-msg-tip { text-align: center; color: #ccc; padding: 60px 20px; font-size: 16px; }
+        .no-msg-tip .big-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+        .toast { position:fixed; top:30px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 28px; border-radius:10px; font-size:16px; z-index:1000; opacity:0; transition:opacity 0.4s; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
+        .toast.show { opacity:1; }
+        .pay-card { background: transparent; padding: 0; max-width: 100%; }
+        .pay-card .pay-title { font-weight: 600; font-size: 18px; margin-bottom: 4px; }
+        .pay-card .pay-detail { color: #555; font-size: 15px; margin: 4px 0; }
+        .pay-card .pay-status { display: inline-block; padding: 2px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; margin-top: 8px; }
+        .pay-status.pending { background: #fff3cd; color: #856404; }
+        .pay-status.paid { background: #d4edda; color: #155724; }
+        .pay-btn { background: #28a745; color: #fff; border: none; border-radius: 20px; padding: 6px 20px; font-size: 15px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        .pay-btn:hover { background: #218838; }
+        .pay-btn:disabled { background: #6c757d; cursor: not-allowed; }
+        .pay-btn.paid-btn { background: #6c757d; cursor: default; }
+        #payModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 999; align-items: center; justify-content: center; }
+        #payModal .modal-box { background: #fff; padding: 30px 40px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+        #payModal .modal-box h2 { margin-top: 0; }
+        #payModal label { display: block; margin: 15px 0 5px; font-weight: 600; }
+        #payModal input[type="text"], #payModal input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; }
+        .modal-actions button { padding: 8px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        .modal-actions .cancel-btn { border: 1px solid #ccc; background: #f5f5f5; }
+        .modal-actions .confirm-btn { border: none; background: #407bff; color: #fff; }
+        @media (max-width: 600px) {
+            .chat-header { font-size: 20px; flex-wrap: wrap; gap: 10px; }
+            #msgInput { font-size: 16px; padding: 10px 14px; }
+            #sendBtn { font-size: 16px; padding: 10px 20px; }
+            #payRequestBtn { font-size: 18px; padding: 0 12px; }
+            .msg-content { font-size: 15px; max-width: 85%; }
+            #payModal .modal-box { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toast" id="toast"></div>
+    <div class="chat-header">
+        <div class="user-info">
+            <div class="avatar">👤</div>
+            <span id="targetName">用户</span>
+            <span class="online-status" id="onlineStatus">● 在线</span>
+        </div>
+        <button class="back-list-btn" onclick="goBack()">← 返回消息列表</button>
+    </div>
+    <div class="typing-indicator" id="typingIndicator">对方正在输入...</div>
+    <div class="chat-box" id="chatBox">
+        <div class="no-msg-tip"><span class="big-icon">💬</span>暂无消息，开始聊天吧！</div>
+    </div>
+    <div class="input-area">
+        <button id="payRequestBtn" title="发起收款">💰</button>
+        <input type="text" id="msgInput" placeholder="输入消息，回车发送" autocomplete="off">
+        <button id="sendBtn">发送</button>
+    </div>
+
+    <div id="payModal">
+        <div class="modal-box">
+            <h2>💰 发起收款</h2>
+            <label>商品名称</label>
+            <input id="productNameInput" type="text" placeholder="例如：二手教材">
+            <label>金额（元）</label>
+            <input id="priceInput" type="number" placeholder="0.00" min="0.01" step="0.01">
+            <div class="modal-actions">
+                <button class="cancel-btn" id="cancelPayBtn">取消</button>
+                <button class="confirm-btn" id="confirmPayBtn">确认发起</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID });
+        const db = app.database();
+        const auth = app.auth();
+
+        // ========== 全局状态 ==========
+        let myRegisteredId = "";
+        let conversationId = "";
+        let targetUserName = "";
+        let targetUserId = "";
+        let msgWatcher = null;
+        let isFirstLoad = true;
+
+        // ========== 工具函数 ==========
+        function getUrlParam(key) {
+            const url = new URL(location.href);
+            return url.searchParams.get(key);
+        }
+
+        function removeUrlParam(key) {
+            const url = new URL(location.href);
+            url.searchParams.delete(key);
+            window.history.replaceState({}, document.title, url.toString());
+        }
+
+        function escapeHtml(text) {
+            if (text === undefined || text === null) return '';
+            if (typeof text !== 'string') text = String(text);
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function scrollToBottom() {
+            const box = document.getElementById("chatBox");
+            setTimeout(() => { box.scrollTop = box.scrollHeight; }, 50);
+        }
+
+        // ========== Toast ==========
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+        function showToast(msg, duration = 2500) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        // ========== 标记已读 ==========
+        async function markConversationRead() {
+            if (!myRegisteredId || !conversationId) return;
+            try {
+                const res = await db.collection('message')
+                    .where({
+                        conversationId: conversationId,
+                        toUser: myRegisteredId,
+                        isRead: false
+                    })
+                    .get();
+                const unreadMsgs = res.data || [];
+                if (unreadMsgs.length === 0) return;
+                let updated = 0;
+                for (let msg of unreadMsgs) {
+                    await db.collection('message').doc(msg._id).update({ isRead: true });
+                    updated++;
+                }
+                console.log(`✅ 已标记 ${updated} 条消息为已读`);
+            } catch (e) {
+                console.error('标记已读失败:', e);
+            }
+        }
+
+        // ===== 发起支付请求 =====
+        async function sendPaymentRequest(productName, price) {
+            const orderId = 'order_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            const contentObj = {
+                productName: productName,
+                price: price,
+                orderId: orderId,
+                status: 'pending'
+            };
+            await db.collection('message').add({
+                conversationId: conversationId,
+                senderId: myRegisteredId,
+                toUser: targetUserId,
+                content: JSON.stringify(contentObj),
+                msgType: 'payment',
+                isRead: false,
+                createdAt: new Date()
+            });
+            await db.collection('conversations').doc(conversationId).update({ updatedAt: new Date() }).catch(() => {});
+            console.log('📤 支付请求已发送:', contentObj);
+        }
+
+        // ===== 跳转到支付页面 =====
+        function goToPay(msgId, productName, price, convId, targetId) {
+            const params = new URLSearchParams({
+                msgId: msgId,
+                productName: encodeURIComponent(productName),
+                price: price,
+                conversationId: convId,
+                targetUserId: targetId,
+                targetUserName: encodeURIComponent(targetUserName)
+            });
+            location.href = 'pay.html?' + params.toString();
+        }
+
+        // ===== 渲染消息（修复 isSelf 判断）=====
+        function renderMsg(list) {
+            const box = document.getElementById("chatBox");
+            if (!list || list.length === 0) {
+                if (!isFirstLoad) {
+                    box.innerHTML = `<div class="no-msg-tip"><span class="big-icon">💬</span>暂无消息，开始聊天吧！</div>`;
+                }
+                return;
+            }
+
+            // 关键：使用最新的 myRegisteredId 判断
+            const currentUserId = myRegisteredId;
+            console.log('🧑 当前用户ID用于渲染:', currentUserId);
+
+            let html = "";
+            let lastDate = "";
+            list.forEach((item) => {
+                // 判断是否自己发送（基于 senderId）
+                const isSelf = (item.senderId === currentUserId);
+                const msgDate = item.createdAt ? new Date(item.createdAt) : new Date();
+                const dateStr = msgDate.toLocaleDateString('zh-CN');
+                if (dateStr !== lastDate) {
+                    html += `<div class="msg-time-tag">${dateStr}</div>`;
+                    lastDate = dateStr;
+                }
+                const timeStr = msgDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                const sender = isSelf ? '我' : targetUserName;
+
+                // ---- 支付消息 ----
+                if (item.msgType === 'payment') {
+                    let payData = null;
+                    let isValid = false;
+
+                    if (item.content !== undefined && item.content !== null) {
+                        if (typeof item.content === 'string') {
+                            try { payData = JSON.parse(item.content); } catch (e) { payData = null; }
+                        } else if (typeof item.content === 'object') {
+                            payData = item.content;
+                        }
+                    }
+
+                    if (payData && typeof payData === 'object' && payData.status) {
+                        isValid = true;
+                    }
+
+                    if (isValid) {
+                        const isPending = payData.status === 'pending';
+                        const isPaid = payData.status === 'paid';
+                        const statusText = isPaid ? '✅ 已支付' : '⏳ 待支付';
+                        const statusClass = isPaid ? 'paid' : 'pending';
+                        const showPayBtn = (item.toUser === currentUserId) && isPending;
+
+                        const bgColor = isSelf ? '#407bff' : '#fff';
+                        const textColor = isSelf ? '#fff' : '#333';
+                        const borderColor = isSelf ? '#407bff' : '#ddd';
+
+                        html += `
+                            <div class="msg-row ${isSelf ? 'msg-self' : 'msg-other'}">
+                                <div class="msg-meta">${sender} · ${timeStr}</div>
+                                <div class="msg-content" style="background:${bgColor}; color:${textColor}; border-color:${borderColor}; padding:12px 16px;">
+                                    <div class="pay-card">
+                                        <div class="pay-title">📦 ${escapeHtml(payData.productName || '商品')}</div>
+                                        <div class="pay-detail">💰 ￥${parseFloat(payData.price || 0).toFixed(2)}</div>
+                                        <div class="pay-status ${statusClass}">${statusText}</div>
+                                        ${showPayBtn ? `<button class="pay-btn" onclick="goToPay('${item._id}', '${escapeHtml(payData.productName)}', '${payData.price}', '${conversationId}', '${item.senderId}')">立即支付</button>` : ''}
+                                        ${isPaid ? `<div style="font-size:13px;color:#388e3c;margin-top:6px;">✅ 支付完成</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    } else {
+                        // 降级显示
+                        let displayText = '[支付数据异常]';
+                        let product = '';
+                        let price = '';
+                        let status = '';
+                        if (payData && typeof payData === 'object') {
+                            product = payData.productName || '';
+                            price = payData.price ? '￥' + parseFloat(payData.price).toFixed(2) : '';
+                            status = payData.status === 'paid' ? '✅ 已支付' : (payData.status === 'pending' ? '⏳ 待支付' : '');
+                        }
+                        if (product || price || status) {
+                            displayText = `${product} ${price} ${status}`.trim();
+                        } else {
+                            displayText = item.content ? String(item.content) : '[支付数据异常]';
+                        }
+                        html += `
+                            <div class="msg-row ${isSelf ? 'msg-self' : 'msg-other'}">
+                                <div class="msg-meta">${sender} · ${timeStr}</div>
+                                <div class="msg-content" style="background:${isSelf ? '#407bff' : '#fff'}; color:${isSelf ? '#fff' : '#333'}; border-color:${isSelf ? '#407bff' : '#ddd'};">
+                                    ${escapeHtml(displayText)}
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
+                }
+
+                // ---- 普通文本消息 ----
+                const contentStr = (item.content !== undefined && item.content !== null) ? String(item.content) : '';
+                html += `
+                    <div class="msg-row ${isSelf ? 'msg-self' : 'msg-other'}">
+                        <div class="msg-meta">${sender} · ${timeStr}</div>
+                        <div class="msg-content">${escapeHtml(contentStr)}</div>
+                    </div>
+                `;
+            });
+            box.innerHTML = html;
+        }
+
+        // ===== 发送消息 =====
+        async function sendMessage() {
+            if (!myRegisteredId) {
+                showToast('👋 请先登录', 2000);
+                setTimeout(() => location.href = 'login.html', 1500);
+                return;
+            }
+            const input = document.getElementById("msgInput");
+            const content = input.value.trim();
+            if (!content) {
+                showToast('请输入消息内容', 1500);
+                return;
+            }
+
+            const btn = document.getElementById("sendBtn");
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+
+            try {
+                await db.collection("message").add({
+                    conversationId: conversationId,
+                    senderId: myRegisteredId,
+                    toUser: targetUserId,
+                    content: content,
+                    msgType: 'text',
+                    isRead: false,
+                    createdAt: new Date()
+                });
+                await db.collection("conversations").doc(conversationId).update({
+                    updatedAt: new Date()
+                }).catch(() => {});
+                input.value = "";
+                scrollToBottom();
+                showToast('✅ 发送成功', 1000);
+            } catch (e) {
+                console.error('发送失败', e);
+                showToast('❌ 发送失败：' + (e.message || '未知错误'), 3000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '发送';
+                input.focus();
+            }
+        }
+
+        // ===== 加载历史消息 =====
+        async function loadHistoryMsg() {
+            try {
+                const { data } = await db.collection("message")
+                    .where({ conversationId })
+                    .orderBy("createdAt", "asc")
+                    .limit(100)
+                    .get();
+                renderMsg(data);
+                isFirstLoad = false;
+                scrollToBottom();
+            } catch (e) {
+                console.error('加载历史消息失败', e);
+                showToast('⚠️ 加载历史消息失败', 2000);
+            }
+        }
+
+        // ===== 启动 watch =====
+        function startWatchMsg() {
+            if (msgWatcher) msgWatcher.close();
+            msgWatcher = db.collection("message")
+                .where({ conversationId })
+                .orderBy("createdAt", "asc")
+                .watch({
+                    onChange: snapshot => {
+                        console.log('📡 watch 触发，消息数量:', snapshot.docs.length);
+                        renderMsg(snapshot.docs);
+                        scrollToBottom();
+                        markConversationRead();
+                    },
+                    onError: err => {
+                        console.error('消息监听失败', err);
+                        showToast('⚠️ 消息监听断开，请刷新页面', 3000);
+                    }
+                });
+        }
+
+        // ===== 返回消息列表 =====
+        function goBack() {
+            sessionStorage.setItem('needRefreshChatList', 'true');
+            location.href = 'chatList.html';
+        }
+
+        // ===== 初始化 =====
+        async function init() {
+            // 1. 获取当前用户ID（必须从 localStorage）
+            myRegisteredId = localStorage.getItem('currentUserId');
+            if (!myRegisteredId) {
+                showToast('👋 请先登录', 2000);
+                setTimeout(() => location.href = 'login.html', 1500);
+                return;
+            }
+            console.log('🧑 当前用户ID:', myRegisteredId);
+
+            // 2. 获取URL参数
+            conversationId = getUrlParam("cid");
+            if (!conversationId || conversationId === 'undefined' || conversationId === 'null') {
+                showToast('⚠️ 会话无效，请重新进入', 2000);
+                setTimeout(() => location.href = 'chatList.html', 1500);
+                return;
+            }
+            targetUserName = decodeURIComponent(getUrlParam("name") || "用户");
+            targetUserId = getUrlParam("targetId") || "";
+
+            console.log('📌 会话ID:', conversationId);
+            console.log('📌 对方名称:', targetUserName);
+            console.log('📌 对方ID:', targetUserId);
+
+            // 如果 targetUserId 为空，尝试从会话中获取
+            if (!targetUserId && conversationId) {
+                try {
+                    const { data } = await db.collection('conversations').doc(conversationId).get();
+                    if (data) {
+                        targetUserId = data.userIdA === myRegisteredId ? data.userIdB : data.userIdA;
+                        console.log('从会话中获取对方ID:', targetUserId);
+                    }
+                } catch (e) {
+                    console.warn('无法从会话获取对方ID', e);
+                }
+            }
+
+            // 更新界面上的对方名称
+            document.getElementById("targetName").innerText = targetUserName;
+
+            // 3. 检测是否需要强制刷新（支付返回）
+            let needRefresh = false;
+            if (getUrlParam('refresh') === '1') {
+                needRefresh = true;
+                removeUrlParam('refresh');
+                console.log('检测到 refresh 参数，将强制刷新消息');
+            } else if (sessionStorage.getItem('paymentSuccess') === 'true') {
+                needRefresh = true;
+                sessionStorage.removeItem('paymentSuccess');
+                console.log('检测到 sessionStorage 标记，将强制刷新消息');
+            }
+
+            // 4. 加载消息并启动监听
+            await loadHistoryMsg();
+            await markConversationRead();
+            startWatchMsg();
+
+            if (needRefresh) {
+                await loadHistoryMsg();
+                showToast('✅ 支付状态已同步', 1500);
+            }
+
+            // 5. 绑定事件
+            document.getElementById("sendBtn").onclick = sendMessage;
+            document.getElementById("msgInput").onkeydown = e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            };
+            document.getElementById("msgInput").focus();
+
+            // 6. 支付弹窗
+            document.getElementById('payRequestBtn').onclick = function() {
+                if (!myRegisteredId) { showToast('请先登录', 2000); return; }
+                if (!targetUserId) { showToast('对方信息不完整', 2000); return; }
+                document.getElementById('payModal').style.display = 'flex';
+                document.getElementById('productNameInput').value = '';
+                document.getElementById('priceInput').value = '';
+                document.getElementById('productNameInput').focus();
+            };
+            function closePayModal() {
+                document.getElementById('payModal').style.display = 'none';
+            }
+            document.getElementById('cancelPayBtn').onclick = closePayModal;
+            document.getElementById('payModal').onclick = function(e) {
+                if (e.target === this) closePayModal();
+            };
+            document.getElementById('confirmPayBtn').onclick = async function() {
+                const productName = document.getElementById('productNameInput').value.trim();
+                const price = parseFloat(document.getElementById('priceInput').value);
+                if (!productName) { showToast('请输入商品名称', 1500); return; }
+                if (!price || price <= 0) { showToast('请输入有效金额', 1500); return; }
+                try {
+                    await sendPaymentRequest(productName, price);
+                    closePayModal();
+                    showToast('✅ 收款请求已发送', 2000);
+                    await loadHistoryMsg();
+                    scrollToBottom();
+                } catch (e) {
+                    console.error('发送支付请求失败', e);
+                    showToast('发送失败，请重试', 2000);
+                }
+            };
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.getElementById('payModal').style.display = 'none';
+                }
+            });
+
+            window.addEventListener('beforeunload', function() {
+                sessionStorage.setItem('needRefreshChatList', 'true');
+            });
+        }
+
+        // ===== 页面关闭时清理 watch =====
+        window.onbeforeunload = () => {
+            if (msgWatcher) msgWatcher.close();
+        };
+        window.onresize = scrollToBottom;
+
+        // ===== 启动 =====
+        init();
+    </script>
+</body>
+</html>

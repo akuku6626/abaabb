@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的管理 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft Yahei", sans-serif; }
+        body { max-width: 960px; margin: 20px auto; padding: 0 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { font-size: 32px; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        .btn-group button { padding: 8px 20px; font-size: 16px; border: 1px solid #333; background: #fff; cursor: pointer; border-radius: 4px; }
+        .btn-group button:hover { background: #f0f0f0; }
+        .btn-group .btn-danger { border-color: #d32f2f; color: #d32f2f; }
+        .btn-group .btn-danger:hover { background: #ffebee; }
+        .btn-group .btn-success { border-color: #388e3c; color: #388e3c; }
+        .btn-group .btn-success:hover { background: #e8f5e9; }
+        .toolbar { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .toolbar label { font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .toolbar select { padding: 4px 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; transition: background 0.2s; }
+        .item-row:hover { background: #f8f9fa; }
+        .item-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .item-left input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .item-name { font-size: 18px; font-weight: 500; }
+        .item-name.finish { text-decoration: line-through; color: #999; }
+        .item-status { font-size: 13px; padding: 2px 10px; border-radius: 12px; margin-left: 8px; }
+        .item-status.approved { background: #d4edda; color: #155724; }
+        .item-status.rejected { background: #f8d7da; color: #721c24; }
+        .item-type { font-size: 12px; padding: 2px 10px; border-radius: 12px; margin-left: 8px; }
+        .item-type.wanted { background: #e3f2fd; color: #1565c0; }
+        .item-type.sale { background: #e8f5e9; color: #2e7d32; }
+        .item-right { display: flex; gap: 8px; flex-wrap: wrap; }
+        .item-right button { padding: 5px 14px; font-size: 14px; border: 1px solid #333; background: #fff; cursor: pointer; border-radius: 4px; }
+        .item-right button:hover { background: #f0f0f0; }
+        .item-right .edit-btn { border-color: #1976d2; color: #1976d2; }
+        .item-right .edit-btn:hover { background: #e3f2fd; }
+        .item-right .del-btn { border-color: #d32f2f; color: #d32f2f; }
+        .item-right .del-btn:hover { background: #ffebee; }
+        .item-right .finish-btn { border-color: #388e3c; color: #388e3c; }
+        .item-right .finish-btn:hover { background: #e8f5e9; }
+        .empty-tip { text-align: center; padding: 60px 20px; color: #999; font-size: 18px; }
+        .back-home { margin-top: 30px; padding: 10px 24px; font-size: 16px; border: 1px solid #333; background: #fff; cursor: pointer; border-radius: 4px; }
+        .back-home:hover { background: #f0f0f0; }
+        .stats { font-size: 14px; color: #666; margin-left: 10px; }
+        .login-tip { text-align: center; padding: 40px; font-size: 18px; color: #999; }
+        .login-tip a { color: #407bff; cursor: pointer; text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📋 我的管理</h1>
+        <button class="back-home" onclick="location.href='index.html'">🏠 返回主页</button>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-success" id="batchFinish">✅ 批量标记完成</button>
+        <button class="btn-danger" id="batchDel">🗑️ 批量删除</button>
+        <button onclick="location.href='buy.html'">🛒 去发布</button>
+    </div>
+
+    <div class="toolbar">
+        <label><input type="checkbox" id="selectAll"> 全选</label>
+        <select id="typeFilter">
+            <option value="all">全部类型</option>
+            <option value="wanted">📢 求购</option>
+            <option value="sale">🛒 出售</option>
+        </select>
+        <span class="stats" id="statsText">共 0 条</span>
+    </div>
+
+    <div id="listWrap"></div>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID });
+        const db = app.database();
+        const auth = app.auth();
+
+        let allItems = [];
+        let filteredItems = [];
+        let selectAllState = false;
+        let currentTypeFilter = 'all';
+
+        const currentUserId = localStorage.getItem('currentUserId');
+
+        if (!currentUserId) {
+            document.getElementById('listWrap').innerHTML = `
+                <div class="login-tip">
+                    👋 请先 <a href="login.html">登录</a> 后查看你的物品
+                </div>
+            `;
+            document.querySelectorAll('.btn-group button, .toolbar input, .toolbar select').forEach(el => el.disabled = true);
+        }
+
+        const statusMap = { 'approved': '已上架', 'rejected': '已下架' };
+        const statusClassMap = { 'approved': 'approved', 'rejected': 'rejected' };
+        const typeMap = { 'wanted': '求购', 'sale': '出售' };
+        const typeClassMap = { 'wanted': 'wanted', 'sale': 'sale' };
+
+        function renderList() {
+            const wrap = document.getElementById("listWrap");
+            const stats = document.getElementById("statsText");
+            stats.textContent = `共 ${filteredItems.length} 条`;
+
+            if (!currentUserId) return;
+
+            if (filteredItems.length === 0) {
+                wrap.innerHTML = `<div class="empty-tip">📭 暂无你发布的物品，去广场发布一条吧</div>`;
+                return;
+            }
+            let html = "";
+            filteredItems.forEach((item, idx) => {
+                const finishClass = item.isFinish ? "finish" : "";
+                const status = item.status || 'approved';
+                const statusLabel = statusMap[status] || status;
+                const statusClass = statusClassMap[status] || 'approved';
+                const typeLabel = typeMap[item.type] || '求购';
+                const typeClass = typeClassMap[item.type] || 'wanted';
+                const price = item.type === 'sale' ? `💰 ${item.price || '面议'}` : `💰 ${item.budget || '面议'}`;
+                const editUrl = item.type === 'sale' ? 'PublishSale.html' : 'PublishBuy.html';
+
+                html += `
+                    <div class="item-row" data-index="${idx}">
+                        <div class="item-left">
+                            <input type="checkbox" class="item-check" data-idx="${idx}">
+                            <span class="item-name ${finishClass}">${item.name || '未命名'}</span>
+                            <span class="item-type ${typeClass}">${typeLabel}</span>
+                            <span class="item-status ${statusClass}">${statusLabel}</span>
+                            <span style="font-size:13px;color:#666;">${price}</span>
+                            ${item.isFinish ? '<span style="font-size:12px;color:#388e3c;background:#e8f5e9;padding:2px 10px;border-radius:12px;">✅ 已完成</span>' : ''}
+                        </div>
+                        <div class="item-right">
+                            <button class="edit-btn" data-id="${item._id}" data-type="${item.type || 'wanted'}">✏️ 编辑</button>
+                            ${item.type !== 'sale' ? `<button class="finish-btn" data-id="${item._id}" data-type="${item.type || 'wanted'}">✅ 完成</button>` : ''}
+                            <button class="del-btn" data-id="${item._id}" data-type="${item.type || 'wanted'}">🗑️ 删除</button>
+                        </div>
+                    </div>
+                `;
+            });
+            wrap.innerHTML = html;
+            bindItemEvent();
+        }
+
+        function bindItemEvent() {
+            document.querySelectorAll(".edit-btn").forEach(btn => {
+                btn.onclick = function() {
+                    const id = this.getAttribute('data-id');
+                    const type = this.getAttribute('data-type') || 'wanted';
+                    const url = type === 'sale' ? 'PublishSale.html' : 'PublishBuy.html';
+                    location.href = url + '?id=' + id;
+                };
+            });
+            document.querySelectorAll(".del-btn").forEach(btn => {
+                btn.onclick = async function() {
+                    const id = this.getAttribute('data-id');
+                    const type = this.getAttribute('data-type') || 'wanted';
+                    const collection = type === 'sale' ? 'sales' : 'wanted';
+                    if (confirm("确定删除这条物品信息？")) {
+                        try {
+                            await db.collection(collection).doc(id).remove();
+                            loadData();
+                        } catch (e) {
+                            alert('删除失败：' + e.message);
+                        }
+                    }
+                };
+            });
+            document.querySelectorAll(".finish-btn").forEach(btn => {
+                btn.onclick = async function() {
+                    const id = this.getAttribute('data-id');
+                    const type = this.getAttribute('data-type') || 'wanted';
+                    const collection = type === 'sale' ? 'sales' : 'wanted';
+                    try {
+                        await db.collection(collection).doc(id).update({ isFinish: true });
+                        loadData();
+                    } catch (e) {
+                        alert('操作失败：' + e.message);
+                    }
+                };
+            });
+        }
+
+        async function loadData() {
+            if (!currentUserId) {
+                allItems = [];
+                filteredItems = [];
+                renderList();
+                return;
+            }
+            try {
+                const [wantedRes, saleRes] = await Promise.all([
+                    db.collection('wanted').where({ user: currentUserId }).orderBy('createdAt', 'desc').get(),
+                    db.collection('sales').where({ user: currentUserId }).orderBy('createdAt', 'desc').get()
+                ]);
+                const wanteds = (wantedRes.data || []).map(item => ({ ...item, type: 'wanted' }));
+                const sales = (saleRes.data || []).map(item => ({ ...item, type: 'sale' }));
+                allItems = [...wanteds, ...sales];
+                allItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                applyFilter();
+            } catch (e) {
+                console.error('加载失败', e);
+                allItems = [];
+                filteredItems = [];
+                renderList();
+            }
+        }
+
+        function applyFilter() {
+            if (currentTypeFilter === 'all') {
+                filteredItems = [...allItems];
+            } else {
+                filteredItems = allItems.filter(item => item.type === currentTypeFilter);
+            }
+            renderList();
+        }
+
+        document.getElementById("selectAll").onclick = function() {
+            selectAllState = !selectAllState;
+            document.querySelectorAll(".item-check").forEach(cb => cb.checked = selectAllState);
+        };
+
+        document.getElementById("typeFilter").onchange = function() {
+            currentTypeFilter = this.value;
+            applyFilter();
+        };
+
+        document.getElementById("batchFinish").onclick = async function() {
+            if (!currentUserId) { alert('请先登录'); return; }
+            const checkedBoxs = document.querySelectorAll(".item-check:checked");
+            if (checkedBoxs.length === 0) {
+                alert("请先勾选需要操作的条目！");
+                return;
+            }
+            if (!confirm(`确定标记选中的 ${checkedBoxs.length} 条为已完成？`)) return;
+            const items = Array.from(checkedBoxs).map(cb => {
+                const idx = Number(cb.dataset.idx);
+                return filteredItems[idx];
+            }).filter(Boolean);
+            try {
+                for (let item of items) {
+                    const collection = item.type === 'sale' ? 'sales' : 'wanted';
+                    await db.collection(collection).doc(item._id).update({ isFinish: true });
+                }
+                loadData();
+                alert("✅ 已批量标记完成");
+            } catch (e) {
+                alert('操作失败：' + e.message);
+            }
+        };
+
+        document.getElementById("batchDel").onclick = async function() {
+            if (!currentUserId) { alert('请先登录'); return; }
+            const checkedBoxs = document.querySelectorAll(".item-check:checked");
+            if (checkedBoxs.length === 0) {
+                alert("请先勾选需要操作的条目！");
+                return;
+            }
+            if (!confirm(`确定删除选中的 ${checkedBoxs.length} 条数据？此操作不可恢复！`)) return;
+            const items = Array.from(checkedBoxs).map(cb => {
+                const idx = Number(cb.dataset.idx);
+                return filteredItems[idx];
+            }).filter(Boolean);
+            try {
+                for (let item of items) {
+                    const collection = item.type === 'sale' ? 'sales' : 'wanted';
+                    await db.collection(collection).doc(item._id).remove();
+                }
+                loadData();
+                alert("🗑️ 批量删除完成");
+            } catch (e) {
+                alert('删除失败：' + e.message);
+            }
+        };
+
+        loadData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>个人设置 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        /* ===== 全局样式 ===== */
+        * { margin:0; padding:0; box-sizing:border-box; font-family:"Microsoft YaHei","PingFang SC",sans-serif; }
+        body { background:#f5f7fb; padding:20px; }
+        .app-container { max-width:820px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 8px 30px rgba(0,0,0,0.06); padding:28px 30px 30px; border:1px solid #e8ecf2; }
+        .top-bar { display:flex; align-items:center; gap:16px; padding-bottom:16px; border-bottom:2px solid #eef1f5; margin-bottom:24px; flex-wrap:wrap; }
+        .back-arrow { font-size:28px; cursor:pointer; user-select:none; color:#3d4a5c; transition:0.15s; padding:0 8px; }
+        .back-arrow:hover { color:#407bff; }
+        .top-bar h1 { font-size:26px; font-weight:700; color:#1a2634; flex:1; }
+        .top-bar .user-id { font-size:13px; color:#8895aa; background:#f5f7fb; padding:4px 14px; border-radius:20px; }
+        .profile-card { display:flex; align-items:center; gap:24px; padding:20px 24px; background:linear-gradient(135deg, #f8f9fa, #eef1f5); border-radius:16px; margin-bottom:30px; border:1px solid #e0e0e0; flex-wrap:wrap; }
+        .avatar-wrap { position:relative; width:80px; height:80px; border-radius:50%; border:3px solid #407bff; overflow:hidden; cursor:pointer; flex-shrink:0; background:#e8edf5; display:flex; align-items:center; justify-content:center; transition:all 0.3s; }
+        .avatar-wrap:hover { border-color:#2563eb; transform:scale(1.03); }
+        .avatar-wrap img { width:100%; height:100%; object-fit:cover; }
+        .avatar-wrap .placeholder { font-size:40px; color:#999; }
+        .avatar-edit-hint { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.6); color:#fff; font-size:11px; text-align:center; padding:2px 0; opacity:0; transition:opacity 0.3s; }
+        .avatar-wrap:hover .avatar-edit-hint { opacity:1; }
+        .profile-info { flex:1; min-width:180px; }
+        .profile-info .name { font-size:24px; font-weight:700; }
+        .profile-info .name .edit-icon { font-size:15px; color:#407bff; cursor:pointer; margin-left:8px; }
+        .profile-info .name .edit-icon:hover { text-decoration:underline; }
+        .profile-info .detail { color:#8895aa; font-size:14px; margin-top:4px; }
+        .profile-info .detail span { margin-right:16px; }
+        .setting-list { border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; margin-bottom:20px; }
+        .setting-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #f0f0f0; cursor:pointer; transition:background 0.15s; }
+        .setting-row:last-child { border-bottom:none; }
+        .setting-row:hover { background:#f8f9fa; }
+        .setting-row .left { display:flex; align-items:center; gap:14px; }
+        .setting-row .left .icon { font-size:22px; width:32px; text-align:center; }
+        .setting-row .left .label { font-size:16px; }
+        .setting-row .left .sub-label { font-size:13px; color:#8895aa; margin-left:6px; }
+        .setting-row .right { display:flex; align-items:center; gap:10px; color:#8895aa; font-size:14px; }
+        .setting-row .right .arrow { font-size:18px; color:#ccc; transition:transform 0.2s; }
+        .setting-row:hover .right .arrow { color:#407bff; transform:translateX(3px); }
+        .bottom-actions { margin-top:20px; display:flex; flex-direction:column; gap:10px; }
+        .bottom-actions button { padding:12px; font-size:16px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:pointer; transition:all 0.2s; text-align:center; }
+        .bottom-actions button:hover { background:#f5f5f5; }
+        .bottom-actions .btn-danger { border-color:#ffcdd2; color:#d32f2f; }
+        .bottom-actions .btn-danger:hover { background:#ffebee; border-color:#d32f2f; }
+        .bottom-actions .btn-primary { border-color:#bbdefb; color:#1976d2; }
+        .bottom-actions .btn-primary:hover { background:#e3f2fd; border-color:#1976d2; }
+
+        .mask { position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:999; backdrop-filter:blur(4px); }
+        .pop-box { background:#fff; padding:30px 32px 26px; border-radius:16px; width:400px; max-width:92%; box-shadow:0 20px 60px rgba(0,0,0,0.2); animation:popIn 0.25s ease; }
+        @keyframes popIn { from { opacity:0; transform:scale(0.95) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        .pop-box h3 { font-size:20px; margin-bottom:4px; }
+        .pop-box .pop-desc { font-size:14px; color:#8895aa; margin-bottom:14px; }
+        .pop-box input { width:100%; font-size:17px; padding:10px 14px; border:2px solid #ddd; border-radius:8px; outline:none; }
+        .pop-box input:focus { border-color:#407bff; }
+        .pop-btn-group { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+        .pop-btn-group button { padding:8px 24px; font-size:15px; border-radius:8px; border:none; cursor:pointer; transition:0.15s; }
+        .pop-btn-group .btn-cancel { background:#f5f5f5; color:#666; }
+        .pop-btn-group .btn-cancel:hover { background:#eee; }
+        .pop-btn-group .btn-save { background:#407bff; color:#fff; }
+        .pop-btn-group .btn-save:hover { background:#2563eb; }
+        #avatarUpload { display:none; }
+        .toast { position:fixed; top:30px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 24px; border-radius:10px; font-size:15px; z-index:10000; opacity:0; transition:opacity 0.4s; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
+        .toast.show { opacity:1; }
+        @media (max-width:600px) {
+            .app-container { padding:16px; }
+            .top-bar h1 { font-size:20px; }
+            .profile-card { flex-direction:column; text-align:center; }
+            .profile-info .detail span { display:block; margin-right:0; }
+            .pop-box { padding:24px 20px; }
+            .pop-box h3 { font-size:18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="app-container">
+
+        <div class="top-bar">
+            <div class="back-arrow" id="backIndexBtn">‹</div>
+            <h1 id="pageTitle">⚙️ 个人设置</h1>
+            <span class="user-id" id="userIdDisplay">ID: ---</span>
+        </div>
+
+        <!-- 个人设置界面（无管理选项卡） -->
+        <div class="panel" id="panel-profile">
+            <div class="profile-card">
+                <div class="avatar-wrap" id="avatarWrap">
+                    <img id="avatarImg" src="" alt="头像">
+                    <span class="placeholder" id="avatarPlaceholder">👤</span>
+                    <div class="avatar-edit-hint">点击更换</div>
+                </div>
+                <div class="profile-info">
+                    <div class="name">
+                        <span id="profileName">用户</span>
+                        <span class="edit-icon" id="editNameBtn">✎ 修改</span>
+                    </div>
+                    <div class="detail">
+                        <span>📱 <span id="profilePhone">未绑定</span></span>
+                        <span>✅ <span id="profileAuth">未认证</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <input type="file" id="avatarUpload" accept="image/*">
+
+            <div class="mask" id="nickMask">
+                <div class="pop-box">
+                    <h3>✏️ 修改昵称</h3>
+                    <div class="pop-desc">给自己起一个好听的名字吧</div>
+                    <input type="text" id="newNickInput" placeholder="请输入新昵称" maxlength="20">
+                    <div class="pop-btn-group">
+                        <button class="btn-cancel" id="cancelNick">取消</button>
+                        <button class="btn-save" id="saveNick">保存</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-list">
+                <div class="setting-row" data-type="avatar">
+                    <div class="left"><span class="icon">🖼️</span><span class="label">更换头像</span></div>
+                    <div class="right"><span>点击更换</span><span class="arrow">›</span></div>
+                </div>
+                <div class="setting-row" data-type="nick">
+                    <div class="left"><span class="icon">✏️</span><span class="label">修改昵称</span><span class="sub-label" id="nickSubLabel">当前：默认</span></div>
+                    <div class="right"><span class="arrow">›</span></div>
+                </div>
+                <div class="setting-row" data-type="phone">
+                    <div class="left"><span class="icon">📱</span><span class="label">绑定手机号</span><span class="sub-label" id="phoneStatus">未绑定</span></div>
+                    <div class="right"><span class="arrow">›</span></div>
+                </div>
+                <div class="setting-row" data-type="auth">
+                    <div class="left"><span class="icon">🛡️</span><span class="label">实名认证</span><span class="sub-label" id="authStatus">未认证</span></div>
+                    <div class="right"><span class="arrow">›</span></div>
+                </div>
+                <div class="setting-row" data-type="pwd">
+                    <div class="left"><span class="icon">🔒</span><span class="label">修改密码</span></div>
+                    <div class="right"><span class="arrow">›</span></div>
+                </div>
+            </div>
+
+            <div class="bottom-actions">
+                <!-- 删除了“切换到管理模式”按钮 -->
+                <button class="btn-primary" onclick="switchAccount()">🔄 切换账号</button>
+                <button class="btn-danger" onclick="logout()">🚪 退出登录</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID, region: 'ap-shanghai' });
+        const db = app.database();
+        const auth = app.auth();
+
+        // ===== Toast =====
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+        function showToast(msg, duration = 2500) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        // ===== 用户管理 =====
+        function getCurrentUser() {
+            try {
+                const raw = localStorage.getItem('currentUser');
+                return raw ? JSON.parse(raw) : null;
+            } catch { return null; }
+        }
+
+        // ===== 个人设置加载 =====
+        function loadUserData() {
+            const user = getCurrentUser();
+            if (!user || !user._id) {
+                location.href = 'login.html';
+                return;
+            }
+            const userId = user._id;
+            document.getElementById('userIdDisplay').textContent = 'ID: ' + (userId.length > 12 ? userId.substring(0,12)+'...' : userId);
+
+            const nickKey = 'userNick_' + userId;
+            let nick = localStorage.getItem(nickKey);
+            if (!nick) {
+                nick = user.realName || user.username || '用户';
+                localStorage.setItem(nickKey, nick);
+            }
+            localStorage.setItem('userNick', nick);
+            document.getElementById('profileName').textContent = nick;
+            document.getElementById('nickSubLabel').textContent = '当前：' + nick;
+            document.getElementById('newNickInput').value = nick;
+
+            const avatarKey = 'userAvatar_' + userId;
+            let avatar = localStorage.getItem(avatarKey);
+            const avatarImg = document.getElementById('avatarImg');
+            const placeholder = document.getElementById('avatarPlaceholder');
+            if (avatar) {
+                avatarImg.src = avatar;
+                avatarImg.style.display = 'block';
+                placeholder.style.display = 'none';
+                localStorage.setItem('userAvatar', avatar);
+            } else {
+                avatarImg.style.display = 'none';
+                placeholder.style.display = 'block';
+                localStorage.removeItem('userAvatar');
+            }
+
+            let phone = localStorage.getItem('userPhone');
+            if (phone) {
+                document.getElementById('profilePhone').textContent = phone;
+                document.getElementById('phoneStatus').textContent = '已绑定';
+            } else {
+                document.getElementById('profilePhone').textContent = '未绑定';
+                document.getElementById('phoneStatus').textContent = '未绑定';
+            }
+            let authStatus = localStorage.getItem('userAuth');
+            if (authStatus === 'true') {
+                document.getElementById('profileAuth').textContent = '已认证';
+                document.getElementById('authStatus').textContent = '已认证';
+            } else {
+                document.getElementById('profileAuth').textContent = '未认证';
+                document.getElementById('authStatus').textContent = '未认证';
+            }
+            localStorage.setItem('lastUserId', userId);
+        }
+
+        // ===== 个人设置事件 =====
+        document.getElementById('backIndexBtn').onclick = () => location.href = "index.html";
+
+        document.getElementById('avatarWrap').onclick = function() { document.getElementById('avatarUpload').click(); };
+        document.querySelector('.setting-row[data-type="avatar"]').onclick = function() { document.getElementById('avatarUpload').click(); };
+        document.getElementById('avatarUpload').onchange = function(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { showToast('⚠️ 请选择图片文件！'); return; }
+            if (file.size > 2*1024*1024) { showToast('⚠️ 图片大小不能超过 2MB！'); return; }
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                let imgData = ev.target.result;
+                const user = getCurrentUser();
+                if (!user || !user._id) {
+                    showToast('⚠️ 未登录，无法保存头像', 2000);
+                    return;
+                }
+                const avatarKey = 'userAvatar_' + user._id;
+                localStorage.setItem(avatarKey, imgData);
+                localStorage.setItem('userAvatar', imgData);
+                document.getElementById('avatarImg').src = imgData;
+                document.getElementById('avatarImg').style.display = 'block';
+                document.getElementById('avatarPlaceholder').style.display = 'none';
+                showToast('✅ 头像更新成功！');
+            }
+            reader.readAsDataURL(file);
+            document.getElementById('avatarUpload').value = '';
+        };
+
+        document.getElementById('editNameBtn').onclick = function() {
+            document.getElementById('nickMask').style.display = 'flex';
+            setTimeout(() => document.getElementById('newNickInput').focus(), 100);
+        };
+        document.querySelector('.setting-row[data-type="nick"]').onclick = function() {
+            document.getElementById('nickMask').style.display = 'flex';
+            setTimeout(() => document.getElementById('newNickInput').focus(), 100);
+        };
+        document.getElementById('cancelNick').onclick = function() {
+            document.getElementById('nickMask').style.display = 'none';
+        };
+        document.getElementById('saveNick').onclick = function() {
+            let newName = document.getElementById('newNickInput').value.trim();
+            if (!newName) { showToast('⚠️ 昵称不能为空！'); return; }
+            if (newName.length > 20) { showToast('⚠️ 昵称不能超过20个字符！'); return; }
+            const user = getCurrentUser();
+            if (!user || !user._id) {
+                showToast('⚠️ 未登录，无法保存昵称', 2000);
+                return;
+            }
+            const nickKey = 'userNick_' + user._id;
+            localStorage.setItem(nickKey, newName);
+            localStorage.setItem('userNick', newName);
+            document.getElementById('profileName').textContent = newName;
+            document.getElementById('nickSubLabel').textContent = '当前：' + newName;
+            document.getElementById('nickMask').style.display = 'none';
+            showToast('✅ 昵称修改成功！');
+        };
+        document.getElementById('newNickInput').onkeydown = function(e) {
+            if (e.key === 'Enter') document.getElementById('saveNick').click();
+            if (e.key === 'Escape') document.getElementById('cancelNick').click();
+        };
+        document.getElementById('nickMask').onclick = function(e) {
+            if (e.target === this) this.style.display = 'none';
+        };
+
+        document.querySelectorAll('.setting-row').forEach(row => {
+            const type = row.getAttribute('data-type');
+            if (type === 'avatar' || type === 'nick') return;
+            row.onclick = function() {
+                switch (type) {
+                    case 'phone':
+                        let phone = prompt('📱 请输入手机号：', localStorage.getItem('userPhone') || '');
+                        if (phone !== null) {
+                            if (phone && !/^1\d{10}$/.test(phone)) { showToast('⚠️ 请输入正确的手机号（11位数字）'); return; }
+                            if (phone) {
+                                localStorage.setItem('userPhone', phone);
+                                document.getElementById('profilePhone').textContent = phone;
+                                document.getElementById('phoneStatus').textContent = '已绑定';
+                                showToast('✅ 手机号绑定成功！');
+                            } else {
+                                localStorage.removeItem('userPhone');
+                                document.getElementById('profilePhone').textContent = '未绑定';
+                                document.getElementById('phoneStatus').textContent = '未绑定';
+                                showToast('已解绑手机号');
+                            }
+                        }
+                        break;
+                    case 'auth':
+                        if (localStorage.getItem('userAuth') === 'true') {
+                            showToast('✅ 您已通过实名认证');
+                        } else {
+                            if (confirm('🛡️ 实名认证需要验证身份信息，是否继续？')) {
+                                localStorage.setItem('userAuth', 'true');
+                                document.getElementById('profileAuth').textContent = '已认证';
+                                document.getElementById('authStatus').textContent = '已认证';
+                                showToast('✅ 实名认证成功！');
+                            }
+                        }
+                        break;
+                    case 'pwd':
+                        let oldPwd = prompt('🔒 请输入当前密码：');
+                        if (oldPwd !== null) {
+                            if (!oldPwd) { showToast('⚠️ 请输入当前密码'); return; }
+                            let newPwd = prompt('请输入新密码（至少4位）：');
+                            if (newPwd !== null) {
+                                if (!newPwd || newPwd.length < 4) { showToast('⚠️ 新密码至少4位'); return; }
+                                let confirmPwd = prompt('请再次输入新密码：');
+                                if (confirmPwd !== null) {
+                                    if (newPwd !== confirmPwd) { showToast('⚠️ 两次密码输入不一致'); return; }
+                                    showToast('✅ 密码修改成功！请重新登录');
+                                    setTimeout(() => { location.href = 'login.html'; }, 1500);
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+        });
+
+        window.switchAccount = function() {
+            if (confirm('🔄 确定要切换账号吗？')) {
+                localStorage.removeItem('currentUserId');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('userNick');
+                localStorage.removeItem('userAvatar');
+                localStorage.removeItem('userPhone');
+                localStorage.removeItem('userAuth');
+                localStorage.removeItem('lastUserId');
+                location.href = 'login.html';
+            }
+        };
+
+        window.logout = function() {
+            if (confirm('🚪 确认退出当前账号？')) {
+                localStorage.removeItem('currentUserId');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('userNick');
+                localStorage.removeItem('userAvatar');
+                localStorage.removeItem('userPhone');
+                localStorage.removeItem('userAuth');
+                localStorage.removeItem('lastUserId');
+                showToast('👋 已退出登录，正在跳转...');
+                setTimeout(() => location.href = 'login.html', 800);
+            }
+        };
+
+        // ===== 初始化 =====
+        auth.signInAnonymously().catch(e => console.warn('匿名登录失败', e));
+        loadUserData();
+    </script>
+</body>
+</html>

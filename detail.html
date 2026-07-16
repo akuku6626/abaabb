@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>物品详情 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        * { box-sizing:border-box; margin:0; padding:0; font-family: "Microsoft Yahei", sans-serif; }
+        body { width:96%; max-width:900px; margin:30px auto; font-size:17px; }
+        .top-box { border:1px solid #222; display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background: #f8f9fa; border-radius: 8px 8px 0 0; }
+        .top-box button { padding:6px 18px; font-size:16px; border:1px solid #222; background:#fff; cursor:pointer; border-radius:4px; }
+        .top-box button:hover { background:#f0f0f0; }
+        .form-row { border:1px solid #222; border-top:none; padding:10px 16px; display:flex; align-items:center; gap:15px; flex-wrap:wrap; }
+        .form-row label { width:100px; font-weight:bold; flex-shrink:0; }
+        .form-row span { flex:1; word-break:break-all; }
+        .status-badge { display:inline-block; padding:2px 14px; border-radius:12px; font-size:14px; }
+        .status-badge.done { background:#e8f5e9; color:#388e3c; }
+        .status-badge.pending { background:#fff3e0; color:#e65100; }
+        .type-tag { font-size:13px; padding:2px 12px; border-radius:12px; margin-left:8px; }
+        .type-tag.wanted { background:#e3f2fd; color:#1565c0; }
+        .type-tag.sale { background:#e8f5e9; color:#2e7d32; }
+        .img-area { width:100%; max-height:300px; border:1px solid #ddd; border-radius:6px; margin:8px 0; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#fafbfc; }
+        .img-area img { width:100%; height:auto; max-height:300px; object-fit:contain; }
+        .img-area .no-img { font-size:48px; padding:20px; color:#ccc; }
+        .msg-title { border:1px solid #222; padding:10px 16px; margin-top:25px; background:#f8f9fa; font-weight:bold; border-radius:8px 8px 0 0; }
+        .msg-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; border:1px solid #222; border-top:none; padding:16px; min-height:100px; border-radius:0 0 8px 8px; }
+        .msg-card { border:1px solid #ddd; border-radius:8px; padding:12px; text-align:center; transition:box-shadow 0.2s; }
+        .msg-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.08); }
+        .msg-content { border:1px solid #eee; border-radius:6px; min-height:70px; margin-top:8px; display:flex; align-items:center; justify-content:center; padding:8px; word-break:break-all; background:#fafbfc; }
+        .input-box { border:1px solid #222; border-top:none; padding:16px; border-radius:0 0 8px 8px; }
+        textarea { width:100%; min-height:100px; border:1px solid #ddd; border-radius:6px; padding:10px; font-size:16px; resize:vertical; transition:border-color 0.2s; }
+        textarea:focus { border-color:#407bff; outline:none; box-shadow:0 0 0 3px rgba(64,123,255,0.12); }
+        .btn-right { text-align:right; margin-top:10px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+        button { padding:8px 20px; font-size:16px; border:1px solid #222; background:#fff; cursor:pointer; border-radius:6px; transition:all 0.2s; }
+        button:hover { background:#f0f0f0; }
+        .btn-primary { background:#407bff; color:#fff; border-color:#407bff; }
+        .btn-primary:hover { background:#2563eb; border-color:#2563eb; }
+        .btn-success { background:#388e3c; color:#fff; border-color:#388e3c; }
+        .btn-success:hover { background:#2e7d32; border-color:#2e7d32; }
+        .no-data { text-align:center; padding:40px; color:#999; grid-column:1/4; }
+        .contact-bar { border:1px solid #222; border-top:none; padding:16px; text-align:center; background:#f8f9fa; border-radius:0 0 8px 8px; display:flex; gap:16px; justify-content:center; }
+        .contact-bar .btn-chat { padding:12px 32px; font-size:18px; background:#407bff; color:#fff; border:none; border-radius:10px; cursor:pointer; transition:all 0.3s; }
+        .contact-bar .btn-chat:hover { background:#2563eb; transform:scale(1.02); box-shadow:0 4px 16px rgba(64,123,255,0.35); }
+        .contact-bar .btn-chat:disabled { background:#ccc; cursor:not-allowed; transform:none; box-shadow:none; }
+        .toast { position:fixed; top:30px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 28px; border-radius:10px; font-size:16px; z-index:1000; opacity:0; transition:opacity 0.4s; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
+        .toast.show { opacity:1; }
+        @media (max-width:600px) {
+            .msg-grid { grid-template-columns:1fr; }
+            .form-row { flex-wrap:wrap; }
+            .form-row label { width:100%; }
+            .contact-bar .btn-chat { padding:10px 20px; font-size:16px; width:100%; }
+            .contact-bar { flex-direction:column; align-items:stretch; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="top-box">
+        <button id="backBtn">← 返回</button>
+        <span style="font-size:20px;font-weight:bold;">📋 物品详情 <span id="typeLabel" class="type-tag wanted">求购</span></span>
+        <span id="toggleBtn" style="cursor:pointer;font-size:20px;">▼</span>
+    </div>
+
+    <div id="formContainer">
+        <div class="form-row"><label>物品名称</label><span id="d_name">-</span></div>
+        <div class="form-row"><label id="priceLabel">价格/预算</label><span id="d_price">-</span></div>
+        <div class="form-row"><label>成色</label><span id="d_quality">-</span></div>
+        <div class="form-row"><label>描述</label><span id="d_desc">-</span></div>
+        <div class="form-row"><label>分类</label><span id="d_category">-</span></div>
+        <div class="form-row"><label>状态</label><span id="d_status">-</span></div>
+        <div class="form-row"><label>发布人</label><span id="d_user">-</span></div>
+        <div class="form-row" id="tradeRow" style="display:none;"><label>交易方式</label><span id="d_trade">-</span></div>
+        <!-- 图片区域 -->
+        <div class="form-row" style="border-bottom:1px solid #222;padding:10px 16px;flex-direction:column;align-items:stretch;">
+            <label style="width:100%;">物品图片</label>
+            <div class="img-area" id="imgArea">
+                <span class="no-img">📦</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 联系按钮 -->
+    <div class="contact-bar">
+        <button class="btn-chat" id="contactBtn">💬 联系发布人</button>
+    </div>
+
+    <div class="msg-title">📝 历史留言（<span id="msgCount">0</span>）</div>
+    <div class="msg-grid" id="messageList"></div>
+
+    <div class="input-box">
+        <div style="font-weight:bold;margin-bottom:6px;">✏️ 留言输入</div>
+        <textarea id="msgInput" placeholder="输入你的留言..." rows="3"></textarea>
+        <div class="btn-right">
+            <button class="btn-primary" id="submitBtn">📤 提交留言</button>
+        </div>
+    </div>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID, region: 'ap-shanghai' });
+        const db = app.database();
+        const _ = db.command;
+        const auth = app.auth();
+
+        // ========== 用户信息 ==========
+        let myUserId = '';
+        let myName = '';
+        let publisherId = '';
+        let publisherName = '';
+        let myRegisteredId = '';
+        let itemType = 'wanted';
+        let currentId = '';
+
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+
+        function showToast(msg, duration = 2500) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        // ===== 获取URL参数 =====
+        function getUrlParam(key) {
+            const url = new URL(location.href);
+            return url.searchParams.get(key);
+        }
+
+        // ===== 获取图片临时链接 =====
+        async function getImageUrl(fileID) {
+            if (!fileID) return null;
+            if (!fileID.startsWith('cloud://')) return fileID;
+            try {
+                const result = await app.getTempFileURL({ fileList: [fileID] });
+                return result.fileList[0].tempFileURL;
+            } catch (e) {
+                console.error('获取图片链接失败:', e);
+                return null;
+            }
+        }
+
+        // ===== 显示图片 =====
+        async function renderImage(fileID) {
+            const imgArea = document.getElementById('imgArea');
+            if (!fileID || fileID === '📦') {
+                imgArea.innerHTML = '<span class="no-img">📦</span>';
+                return;
+            }
+            const url = await getImageUrl(fileID);
+            if (url && url !== fileID) {
+                imgArea.innerHTML = `<img src="${url}" alt="图片">`;
+            } else {
+                imgArea.innerHTML = `<span class="no-img">📦</span>`;
+            }
+        }
+
+        // ===== 初始化登录 =====
+        async function initAuth() {
+            myRegisteredId = localStorage.getItem('currentUserId') || '';
+            try {
+                const loginState = await auth.getLoginState();
+                if (loginState) {
+                    myUserId = loginState.user.uid;
+                } else {
+                    const res = await auth.signInAnonymously();
+                    myUserId = res.user.uid;
+                }
+                myName = localStorage.getItem('userNick') || '用户_' + myUserId.substring(0, 6);
+                console.log('当前用户UID:', myUserId);
+                console.log('当前注册ID:', myRegisteredId);
+            } catch (err) {
+                console.error('登录失败', err);
+                myUserId = localStorage.getItem('currentUserId') || 'anonymous_' + Date.now();
+                myName = localStorage.getItem('userNick') || '用户';
+            }
+            currentId = getUrlParam('id');
+            itemType = getUrlParam('type') || 'wanted';
+            console.log('加载详情，ID:', currentId, '类型:', itemType);
+
+            if (currentId) {
+                loadDetail();
+                loadComments();
+            } else {
+                document.getElementById('formContainer').innerHTML = '<div class="no-data" style="padding:20px;">❌ 未指定物品ID</div>';
+            }
+        }
+
+        // ========== 加载物品详情 ==========
+        async function loadDetail() {
+            const collection = itemType === 'sale' ? 'sales' : 'wanted';
+            console.log('查询集合:', collection, '文档ID:', currentId);
+            try {
+                const res = await db.collection(collection).doc(currentId).get();
+                // 兼容数组和对象
+                let data = res.data;
+                if (Array.isArray(data)) {
+                    data = data[0];
+                }
+                console.log('获取到的数据:', data);
+                if (!data) {
+                    document.getElementById('formContainer').innerHTML = '<div class="no-data" style="padding:20px;">❌ 未找到该物品</div>';
+                    return;
+                }
+
+                // 发布人信息
+                publisherId = data.user || '';
+                publisherName = data.userDisplay || '匿名用户';
+                console.log('发布人ID:', publisherId, '发布人名称:', publisherName);
+
+                // 类型标签
+                const typeLabel = document.getElementById('typeLabel');
+                if (itemType === 'sale') {
+                    typeLabel.textContent = '出售';
+                    typeLabel.className = 'type-tag sale';
+                    document.getElementById('priceLabel').textContent = '价格';
+                    document.getElementById('tradeRow').style.display = 'flex';
+                    document.getElementById('d_trade').textContent = data.trade || '面交';
+                } else {
+                    typeLabel.textContent = '求购';
+                    typeLabel.className = 'type-tag wanted';
+                    document.getElementById('priceLabel').textContent = '预算';
+                    document.getElementById('tradeRow').style.display = 'none';
+                }
+
+                // 填充数据
+                document.getElementById('d_name').textContent = data.name || '未命名物品';
+                const priceVal = itemType === 'sale' ? data.price : data.budget;
+                document.getElementById('d_price').textContent = priceVal || '面议';
+                document.getElementById('d_quality').textContent = data.quality || '不限';
+                document.getElementById('d_desc').textContent = data.description || '无';
+                const catMap = { 'book':'📚 教材书籍', 'digital':'💻 数码电子', 'daily':'🧴 日用百货', 'sports':'⚽ 运动器材', 'other':'🎯 其他' };
+                document.getElementById('d_category').textContent = catMap[data.category] || data.category || '其他';
+
+                const statusHtml = data.isFinish 
+                    ? '<span class="status-badge done">✅ 已完成</span>' 
+                    : '<span class="status-badge pending">⏳ 进行中</span>';
+                document.getElementById('d_status').innerHTML = statusHtml;
+
+                document.getElementById('d_user').textContent = publisherName || '发布人信息缺失';
+
+                // 显示图片
+                await renderImage(data.img);
+
+                // ===== 控制联系按钮 =====
+                const contactBtn = document.getElementById('contactBtn');
+                if (!myRegisteredId) {
+                    contactBtn.textContent = '🔒 登录后联系';
+                    contactBtn.disabled = true;
+                } else if (!publisherId) {
+                    contactBtn.textContent = '⚠️ 发布人信息不完整';
+                    contactBtn.disabled = true;
+                } else if (publisherId === myRegisteredId) {
+                    contactBtn.textContent = '👤 这是你自己的物品';
+                    contactBtn.disabled = true;
+                } else {
+                    contactBtn.textContent = '💬 联系发布人';
+                    contactBtn.disabled = false;
+                }
+
+            } catch (e) {
+                console.error('加载详情失败:', e);
+                document.getElementById('formContainer').innerHTML = '<div class="no-data" style="padding:20px;">❌ 加载失败</div>';
+            }
+        }
+
+        // ========== 加载留言 ==========
+        async function loadComments() {
+            const container = document.getElementById('messageList');
+            const countEl = document.getElementById('msgCount');
+            if (!currentId) {
+                container.innerHTML = '<div class="no-data">请选择物品</div>';
+                return;
+            }
+            try {
+                const res = await db.collection('comment')
+                    .where({ itemId: currentId })
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                const data = res.data || [];
+                countEl.textContent = data.length;
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="no-data">💬 暂无留言，来抢沙发吧！</div>';
+                    return;
+                }
+                let html = '';
+                for (let item of data) {
+                    const time = item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN') : '';
+                    html += `
+                        <div class="msg-card">
+                            <div style="font-weight:600;">👤 ${escapeHtml(item.user || '匿名')}</div>
+                            <div class="msg-content">${escapeHtml(item.content)}</div>
+                            <div style="font-size:12px;color:#999;margin-top:6px;">${time}</div>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('加载留言失败:', e);
+                container.innerHTML = '<div class="no-data">❌ 留言加载失败</div>';
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ========== 提交留言 ==========
+        document.getElementById('submitBtn').onclick = async function() {
+            if (!myRegisteredId) {
+                alert('👋 请先登录后再留言');
+                location.href = 'login.html';
+                return;
+            }
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if (!text) { showToast('⚠️ 请输入留言内容'); return; }
+            if (!currentId) { showToast('⚠️ 无效的物品'); return; }
+            try {
+                await db.collection('comment').add({
+                    itemId: currentId,
+                    user: myName,
+                    content: text,
+                    createdAt: new Date()
+                });
+                input.value = '';
+                showToast('✅ 留言成功！');
+                loadComments();
+            } catch (e) {
+                showToast('❌ 留言失败：' + e.message);
+                console.error(e);
+            }
+        };
+
+        // ========== 联系发布人（创建/获取会话） ==========
+        document.getElementById('contactBtn').onclick = async function() {
+            if (!myRegisteredId) {
+                alert('👋 请先登录后再联系发布人');
+                location.href = 'login.html';
+                return;
+            }
+            const btn = this;
+            if (btn.disabled) return;
+            if (!publisherId) { showToast('⚠️ 发布人信息不完整，无法联系'); return; }
+            if (publisherId === myRegisteredId) { showToast('😄 这是你自己的物品哦'); return; }
+
+            try {
+                btn.textContent = '⏳ 处理中...';
+                btn.disabled = true;
+                const { data } = await db.collection('conversations')
+                    .where(_.or([
+                        { userIdA: myRegisteredId, userIdB: publisherId },
+                        { userIdA: publisherId, userIdB: myRegisteredId }
+                    ]))
+                    .get();
+
+                let conversationId;
+                if (data && data.length > 0) {
+                    conversationId = data[0]._id;
+                } else {
+                    const result = await db.collection('conversations').add({
+                        userIdA: myRegisteredId,
+                        userIdB: publisherId,
+                        nameA: myName,
+                        nameB: publisherName,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    });
+                    conversationId = result.id;
+                }
+                location.href = `chatRoom.html?cid=${conversationId}&name=${encodeURIComponent(publisherName)}&targetId=${encodeURIComponent(publisherId)}`;
+            } catch (e) {
+                console.error('创建会话失败', e);
+                showToast('❌ 操作失败：' + e.message);
+                btn.textContent = '💬 联系发布人';
+                btn.disabled = false;
+            }
+        };
+
+        // ========== 返回 ==========
+        document.getElementById('backBtn').onclick = function() {
+            const from = getUrlParam('from');
+            if (from === 'admin') {
+                const type = getUrlParam('type') || 'wanted';
+                if (type === 'sale') {
+                    location.href = 'adminSale.html';
+                } else {
+                    location.href = 'adminWanted.html';
+                }
+            } else {
+                location.href = "buy.html";
+            }
+        };
+
+        // ========== 折叠详情 ==========
+        let isFormVisible = true;
+        document.getElementById('toggleBtn').onclick = function() {
+            const form = document.getElementById('formContainer');
+            const contact = document.querySelector('.contact-bar');
+            form.style.display = isFormVisible ? 'none' : 'block';
+            contact.style.display = isFormVisible ? 'none' : 'block';
+            this.textContent = isFormVisible ? '▶' : '▼';
+            isFormVisible = !isFormVisible;
+        };
+
+        // ========== 启动 ==========
+        initAuth();
+    </script>
+</body>
+</html>

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>出售贴管理 - 校园旧书好物交易平台</title>
+    <script src="https://static.cloudbase.net/cloudbase-js-sdk/2.17.3/cloudbase.full.js"></script>
+    <style>
+        /* ===== 与 adminWanted 完全相同的样式 ===== */
+        * { margin:0; padding:0; box-sizing:border-box; font-family:"Microsoft YaHei","PingFang SC",sans-serif; }
+        body { background:#f5f7fb; display:flex; height:100vh; overflow:hidden; }
+        .sidebar { width:220px; min-width:220px; background:#fff; border-right:1px solid #e8ecf2; height:100vh; display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0; }
+        .sidebar-brand { padding:20px 24px 14px; border-bottom:1px solid #eef1f5; font-size:20px; font-weight:700; color:#1a2634; display:flex; align-items:center; gap:8px; }
+        .sidebar-brand span { font-size:26px; }
+        .sidebar-menu { padding:12px 0; flex:1; }
+        .menu-item { display:flex; align-items:center; padding:12px 24px; cursor:pointer; color:#3d4a5c; font-size:15px; transition:0.15s; border-left:3px solid transparent; gap:12px; text-decoration:none; }
+        .menu-item:hover { background:#f0f4fe; color:#1a2634; }
+        .menu-item.active { background:#eef4ff; color:#407bff; border-left-color:#407bff; font-weight:500; }
+        .menu-item .icon { font-size:18px; width:24px; text-align:center; }
+        .admin-info { padding:16px 24px; border-top:1px solid #eef1f5; display:flex; align-items:center; gap:12px; }
+        .admin-avatar { width:36px; height:36px; border-radius:50%; background:#407bff; color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:600; }
+        .admin-name { font-size:14px; font-weight:600; color:#1a2634; }
+        .admin-role { font-size:12px; color:#8895aa; }
+        .logout-btn { margin:0 12px 16px; padding:8px 16px; background:#e74c5e; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:14px; transition:0.15s; text-align:center; }
+        .logout-btn:hover { background:#c0392b; }
+
+        .main-content { flex:1; padding:24px 32px 40px; overflow-y:auto; }
+        .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+        .page-header h1 { font-size:26px; font-weight:700; color:#1a2634; }
+
+        .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:18px; background:#fff; border-radius:12px; padding:12px 20px; border:1px solid #e8ecf2; }
+        .toolbar select, .toolbar input { padding:6px 12px; border:1px solid #d0d6de; border-radius:6px; font-size:14px; background:#fafcff; outline:none; }
+        .toolbar select:focus, .toolbar input:focus { border-color:#407bff; box-shadow:0 0 0 3px rgba(64,123,255,0.12); }
+        .toolbar .btn-group { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+
+        .btn { padding:6px 16px; border:1px solid #d0d6de; border-radius:6px; background:#fff; cursor:pointer; font-size:14px; transition:0.15s; }
+        .btn:hover { background:#f0f4fe; }
+        .btn-primary { background:#407bff; color:#fff; border-color:#407bff; }
+        .btn-primary:hover { background:#2563eb; }
+        .btn-danger { background:#e74c5e; color:#fff; border-color:#e74c5e; }
+        .btn-danger:hover { background:#d63a4c; }
+        .btn-sm { padding:4px 12px; font-size:13px; }
+        .btn-xs { padding:2px 10px; font-size:12px; border-radius:4px; }
+        .btn-warning { border-color:#f0ad4e; color:#f0ad4e; }
+        .btn-warning:hover { background:#fff3e0; }
+        .btn-success { background:#22a67e; color:#fff; border-color:#22a67e; }
+        .btn-success:hover { background:#1a8f6c; }
+        .btn-info { border-color:#17a2b8; color:#17a2b8; }
+        .btn-info:hover { background:#e3f4f7; }
+
+        .table-wrap { background:#fff; border-radius:12px; border:1px solid #e8ecf2; overflow:hidden; }
+        .table-scroll { overflow-x:auto; }
+        table { width:100%; border-collapse:collapse; font-size:14px; min-width:700px; }
+        thead { background:#f8fafd; border-bottom:1px solid #e2e6ec; }
+        thead th { padding:12px 14px; text-align:left; font-weight:600; color:#3d4a5c; font-size:13px; white-space:nowrap; }
+        tbody td { padding:12px 14px; border-bottom:1px solid #eef1f5; color:#1a2634; vertical-align:middle; }
+        tbody tr:hover { background:#f8fafd; }
+        .status-badge { display:inline-block; padding:2px 12px; border-radius:20px; font-size:12px; font-weight:500; }
+        .status-badge.approved { background:#d4edda; color:#155724; }
+        .status-badge.rejected { background:#f8d7da; color:#721c24; }
+        .action-group { display:flex; gap:4px; flex-wrap:wrap; }
+
+        .pagination-bar { display:flex; justify-content:space-between; align-items:center; padding:14px 20px 16px; border-top:1px solid #eef1f5; flex-wrap:wrap; gap:10px; background:#fafcff; }
+        .pagination-bar .info { font-size:14px; color:#8895aa; }
+        .pagination-bar .pages { display:flex; gap:4px; }
+        .pagination-bar .pages button { padding:4px 12px; border:1px solid #d0d6de; border-radius:6px; background:#fff; cursor:pointer; font-size:14px; min-width:34px; height:34px; }
+        .pagination-bar .pages button:hover { background:#f0f4fe; }
+        .pagination-bar .pages button.active { background:#407bff; color:#fff; border-color:#407bff; }
+        .pagination-bar .pages button:disabled { opacity:0.4; cursor:not-allowed; pointer-events:none; }
+
+        .empty-state { text-align:center; padding:40px; color:#8895aa; }
+        .empty-state .icon { font-size:48px; margin-bottom:8px; opacity:0.5; }
+
+        .toast { position:fixed; top:30px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 28px; border-radius:10px; font-size:15px; z-index:1000; opacity:0; transition:opacity 0.4s; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,0.2); }
+        .toast.show { opacity:1; }
+
+        .modal-overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center;
+            z-index:9999; animation:fadeIn 0.2s ease;
+        }
+        .modal-box {
+            background:#fff; border-radius:12px; padding:24px;
+            max-width:600px; width:90%; max-height:80%; overflow-y:auto;
+            box-shadow:0 8px 30px rgba(0,0,0,0.2);
+        }
+        .modal-box h3 { margin-bottom:16px; color:#1a2634; }
+        .modal-close { margin-top:16px; padding:8px 24px; border:1px solid #d0d6de; background:#f5f7fb; border-radius:6px; cursor:pointer; font-size:14px; }
+        .modal-close:hover { background:#eee; }
+        .comment-item { border-bottom:1px solid #f0f2f6; padding:10px 0; }
+        .comment-item:last-child { border-bottom:none; }
+        .comment-user { font-weight:600; }
+        .comment-time { font-size:12px; color:#8895aa; margin-left:12px; }
+        .comment-content { margin:6px 0 8px; word-break:break-all; }
+        .comment-delete-btn { padding:2px 10px; font-size:12px; border:1px solid #e74c5e; color:#e74c5e; background:#fff; border-radius:4px; cursor:pointer; }
+        .comment-delete-btn:hover { background:#ffebee; }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+        @media (max-width:768px) {
+            .sidebar { width:60px; min-width:60px; }
+            .sidebar-brand span:last-child, .menu-item .label, .admin-info .admin-name, .admin-info .admin-role { display:none; }
+            .sidebar-brand { justify-content:center; padding:16px 0; }
+            .menu-item { padding:12px 0; justify-content:center; }
+            .admin-info { justify-content:center; }
+            .main-content { padding:16px; }
+            .toolbar .btn-group { margin-left:0; width:100%; justify-content:flex-start; }
+            .modal-box { width:95%; padding:16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast" id="toast"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand"><span>📚</span><span>管理后台</span></div>
+        <div class="sidebar-menu">
+            <a class="menu-item" href="adminDashboard.html"><span class="icon">📊</span><span class="label">数据概览</span></a>
+            <a class="menu-item" href="adminWanted.html"><span class="icon">📦</span><span class="label">求购贴管理</span></a>
+            <a class="menu-item active" href="adminSale.html"><span class="icon">🛒</span><span class="label">出售贴管理</span></a>
+            <a class="menu-item" href="adminComment.html"><span class="icon">💬</span><span class="label">留言审核</span></a>
+            <a class="menu-item" href="adminUsers.html"><span class="icon">👥</span><span class="label">用户管理</span></a>
+            <a class="menu-item" href="adminReports.html"><span class="icon">🚫</span><span class="label">举报管理</span></a>
+        </div>
+        <div class="admin-info">
+            <div class="admin-avatar" id="adminAvatar">管</div>
+            <div><div class="admin-name" id="adminName">管理员</div><div class="admin-role">超级管理员</div></div>
+        </div>
+        <button class="logout-btn" onclick="logoutAdmin()">🚪 退出管理</button>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1>🛒 出售贴管理</h1>
+            <button class="btn btn-sm" onclick="location.reload()">🔄 刷新</button>
+        </div>
+
+        <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="关键词搜索..." style="width:180px;">
+            <select id="statusFilter">
+                <option value="all">全部状态</option>
+                <option value="approved">已上架</option>
+                <option value="rejected">已下架</option>
+            </select>
+            <button class="btn btn-sm" onclick="applyFilter()">🔍 搜索</button>
+            <div class="btn-group">
+                <button class="btn btn-danger btn-sm" id="batchOfflineBtn">📉 批量下架</button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:36px;"><input type="checkbox" id="selectAll" onchange="toggleAllChecks(this)"></th>
+                            <th style="width:60px;">编号</th>
+                            <th>标题</th>
+                            <th style="width:80px;">发布人</th>
+                            <th style="width:80px;">分类</th>
+                            <th style="width:80px;">状态</th>
+                            <th style="width:90px;">发布时间</th>
+                            <th style="width:220px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"><tr><td colspan="8" class="empty-state"><div class="icon">📭</div><p>暂无出售</p></td></tr></tbody>
+                </table>
+            </div>
+            <div class="pagination-bar">
+                <span class="info" id="paginationInfo">共 0 条</span>
+                <div class="pages" id="pagination"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const ENV_ID = 'campus-trading-d9g84nflw71c77ac3';
+        const app = cloudbase.init({ env: ENV_ID, region: 'ap-shanghai' });
+        const db = app.database();
+        const _ = db.command;
+        const auth = app.auth();
+
+        (function checkAdmin() {
+            const userStr = localStorage.getItem('currentUser');
+            if (!userStr) { location.href = 'adminLogin.html'; return; }
+            const user = JSON.parse(userStr);
+            if (user.role !== 'admin') { location.href = 'adminLogin.html'; return; }
+            document.getElementById('adminName').textContent = user.realName || user.username || '管理员';
+            document.getElementById('adminAvatar').textContent = (user.realName || '管')[0];
+        })();
+
+        window.logoutAdmin = function() {
+            if (!confirm('确定退出管理并退出登录吗？')) return;
+            localStorage.removeItem('currentUserId');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userNick');
+            localStorage.removeItem('userAvatar');
+            localStorage.removeItem('userPhone');
+            localStorage.removeItem('userAuth');
+            localStorage.removeItem('lastUserId');
+            location.href = 'login.html';
+        };
+
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+        function showToast(msg, duration = 2500) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatTime(ts) {
+            if (!ts) return '-';
+            const d = new Date(ts);
+            return d.toLocaleString('zh-CN', { hour12: false });
+        }
+
+        function renderPagination(container, current, total, onChange) {
+            if (total <= 1) { container.innerHTML = ''; return; }
+            let html = '';
+            html += `<button ${current <= 1 ? 'disabled' : ''} data-page="${current-1}">‹</button>`;
+            let startPage = Math.max(1, current - 2);
+            let endPage = Math.min(total, current + 2);
+            if (endPage - startPage < 4) {
+                if (startPage > 1) startPage = Math.max(1, endPage - 4);
+                if (endPage < total) endPage = Math.min(total, startPage + 4);
+            }
+            if (startPage > 1) { html += `<button data-page="1">1</button>`; if (startPage > 2) html += `<button disabled>…</button>`; }
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button data-page="${i}" class="${i === current ? 'active' : ''}">${i}</button>`;
+            }
+            if (endPage < total) { if (endPage < total - 1) html += `<button disabled>…</button>`; html += `<button data-page="${total}">${total}</button>`; }
+            html += `<button ${current >= total ? 'disabled' : ''} data-page="${current+1}">›</button>`;
+            container.innerHTML = html;
+            container.querySelectorAll('button[data-page]').forEach(btn => {
+                btn.onclick = function() {
+                    const page = parseInt(this.dataset.page);
+                    if (!isNaN(page) && page !== current) onChange(page);
+                };
+            });
+        }
+
+        let allItems = [], filteredItems = [], currentPage = 1, pageSize = 8;
+
+        async function loadData() {
+            try {
+                const res = await db.collection('sales').orderBy('createdAt', 'desc').get();
+                allItems = res.data || [];
+                allItems.forEach(item => { if (!item.status) item.status = 'approved'; });
+                if (allItems.length === 0) {
+                    showToast('⚠️ 未加载到任何出售贴', 3000);
+                }
+                applyFilter();
+            } catch (e) {
+                console.error('加载失败', e);
+                showToast('❌ 加载失败：' + e.message, 3000);
+                allItems = [];
+                renderTable([]);
+            }
+        }
+
+        window.applyFilter = function() {
+            const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+            let list = allItems;
+            if (keyword) {
+                list = list.filter(item => (item.name || '').toLowerCase().includes(keyword) || (item.userDisplay || '').toLowerCase().includes(keyword));
+            }
+            if (status !== 'all') {
+                list = list.filter(item => item.status === status);
+            }
+            filteredItems = list;
+            currentPage = 1;
+            renderTable(filteredItems);
+        };
+
+        function renderTable(list) {
+            const tbody = document.getElementById('tableBody');
+            const info = document.getElementById('paginationInfo');
+            const pages = document.getElementById('pagination');
+
+            const total = list.length;
+            const totalPages = Math.ceil(total / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, total);
+            const pageItems = list.slice(start, end);
+
+            info.textContent = `共 ${total} 条`;
+
+            if (total === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state"><div class="icon">📭</div><p>暂无出售</p></td></tr>`;
+                pages.innerHTML = '';
+                return;
+            }
+
+            const statusMap = { 'approved':'已上架', 'rejected':'已下架' };
+            const statusClassMap = { 'approved':'approved', 'rejected':'rejected' };
+            const categoryMap = { 'book':'教材书籍','digital':'数码电子','daily':'日用百货','sports':'运动器材','other':'其他' };
+
+            let html = '';
+            pageItems.forEach((item, idx) => {
+                const realIdx = start + idx + 1;
+                const id = 'S' + String(realIdx).padStart(3, '0');
+                const status = item.status === 'rejected' ? 'rejected' : 'approved';
+                const statusLabel = statusMap[status] || status;
+                const statusClass = statusClassMap[status] || 'approved';
+                const category = categoryMap[item.category] || item.category || '其他';
+
+                let ops = '';
+                if (status === 'approved') {
+                    ops = `
+                        <button class="btn btn-xs btn-primary" onclick="viewItem('${item._id}')">查看</button>
+                        <button class="btn btn-xs btn-warning" onclick="editItem('${item._id}')">编辑</button>
+                        <button class="btn btn-xs btn-danger" onclick="offlineItem('${item._id}')">下架</button>
+                        <button class="btn btn-xs btn-info" onclick="viewComments('${item._id}')">💬</button>
+                    `;
+                } else {
+                    ops = `
+                        <button class="btn btn-xs btn-primary" onclick="viewItem('${item._id}')">查看</button>
+                        <button class="btn btn-xs btn-success" onclick="onlineItem('${item._id}')">上架</button>
+                        <button class="btn btn-xs btn-danger" onclick="deleteItem('${item._id}')">删除</button>
+                        <button class="btn btn-xs btn-info" onclick="viewComments('${item._id}')">💬</button>
+                    `;
+                }
+
+                html += `
+                    <tr>
+                        <td><input type="checkbox" class="item-check" data-id="${item._id}"></td>
+                        <td><strong>${id}</strong></td>
+                        <td>${escapeHtml(item.name || '未命名')}</td>
+                        <td>${escapeHtml(item.userDisplay || item.user || '匿名')}</td>
+                        <td>${category}</td>
+                        <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                        <td>${formatTime(item.createdAt)}</td>
+                        <td><div class="action-group">${ops}</div></td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            renderPagination(pages, currentPage, totalPages, (page) => {
+                currentPage = page;
+                renderTable(filteredItems);
+            });
+        }
+
+        // ===== 查看按钮：传递 from=admin 参数 =====
+        window.viewItem = function(id) {
+            window.open('detail.html?id=' + id + '&type=sale&from=admin', '_blank');
+        };
+
+        window.editItem = function(id) { location.href = 'PublishSale.html?id=' + id; };
+
+        window.offlineItem = async function(id) {
+            if (!confirm('确定下架该出售贴？')) return;
+            try {
+                await db.collection('sales').doc(id).update({ status: 'rejected' });
+                showToast('✅ 已下架', 1500);
+                loadData();
+            } catch (e) { showToast('❌ 操作失败：' + e.message, 4000); }
+        };
+
+        window.onlineItem = async function(id) {
+            if (!confirm('确定上架该出售贴？')) return;
+            try {
+                await db.collection('sales').doc(id).update({ status: 'approved' });
+                showToast('✅ 已上架', 1500);
+                loadData();
+            } catch (e) { showToast('❌ 操作失败：' + e.message, 4000); }
+        };
+
+        window.deleteItem = async function(id) {
+            if (!confirm('确定删除该出售贴？')) return;
+            try {
+                await db.collection('sales').doc(id).remove();
+                showToast('🗑️ 已删除', 1500);
+                loadData();
+            } catch (e) { showToast('❌ 删除失败：' + e.message, 4000); }
+        };
+
+        document.getElementById('batchOfflineBtn').onclick = async function() {
+            const checks = document.querySelectorAll('.item-check:checked');
+            if (checks.length === 0) { showToast('⚠️ 请先选择出售贴', 2000); return; }
+            if (!confirm(`确定批量下架选中的 ${checks.length} 条出售贴？`)) return;
+            const ids = Array.from(checks).map(cb => cb.dataset.id);
+            const approvedIds = ids.filter(id => {
+                const item = allItems.find(w => w._id === id);
+                return item && item.status === 'approved';
+            });
+            if (approvedIds.length === 0) { showToast('⚠️ 所选出售贴均不在上架状态', 2000); return; }
+            try {
+                for (let id of approvedIds) {
+                    await db.collection('sales').doc(id).update({ status: 'rejected' });
+                }
+                showToast(`✅ 已批量下架 ${approvedIds.length} 条`, 1500);
+                loadData();
+            } catch (e) { showToast('❌ 批量下架失败：' + e.message, 4000); }
+        };
+
+        window.toggleAllChecks = function(el) {
+            document.querySelectorAll('.item-check').forEach(cb => cb.checked = el.checked);
+        };
+
+        window.viewComments = async function(postId) {
+            try {
+                const res = await db.collection('comment')
+                    .where(_.or([{ itemId: postId }, { wantedId: postId }]))
+                    .orderBy('createdAt', 'desc')
+                    .get();
+                const comments = res.data || [];
+
+                let html = `
+                    <div class="modal-overlay" onclick="if(event.target===this)this.remove()">
+                        <div class="modal-box">
+                            <h3>💬 留言管理</h3>
+                            <div id="commentList">
+                `;
+                if (comments.length === 0) {
+                    html += `<p style="color:#8895aa;">暂无留言</p>`;
+                } else {
+                    comments.forEach(c => {
+                        const time = c.createdAt ? new Date(c.createdAt).toLocaleString() : '';
+                        html += `
+                            <div class="comment-item">
+                                <div>
+                                    <span class="comment-user">${escapeHtml(c.user || '匿名')}</span>
+                                    <span class="comment-time">${time}</span>
+                                </div>
+                                <div class="comment-content">${escapeHtml(c.content || '无内容')}</div>
+                                <button class="comment-delete-btn" onclick="deleteComment('${c._id}','${postId}')">删除</button>
+                            </div>
+                        `;
+                    });
+                }
+                html += `
+                            </div>
+                            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+                        </div>
+                    </div>
+                `;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                document.body.appendChild(tempDiv.firstElementChild);
+            } catch (e) {
+                showToast('❌ 加载留言失败：' + e.message, 3000);
+            }
+        };
+
+        window.deleteComment = async function(commentId, postId) {
+            if (!confirm('确定删除该留言吗？')) return;
+            try {
+                await db.collection('comment').doc(commentId).remove();
+                showToast('✅ 已删除', 1500);
+                const modal = document.querySelector('.modal-overlay');
+                if (modal) modal.remove();
+                viewComments(postId);
+            } catch (e) {
+                showToast('❌ 删除失败：' + e.message, 4000);
+            }
+        };
+
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') applyFilter();
+        });
+
+        auth.signInAnonymously().catch(e => console.warn('匿名登录失败', e));
+        loadData();
+    </script>
+</body>
+</html>
